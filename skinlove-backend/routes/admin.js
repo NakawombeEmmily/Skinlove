@@ -1,0 +1,150 @@
+import { Router } from "express";
+import { query } from "../db/client.js";
+import { requireAuth } from "../middleware/authMiddleware.js";
+import { adminOnly } from "../middleware/adminMiddleware.js";
+
+const router = Router();
+
+router.use(requireAuth, adminOnly);
+
+// GET /api/admin/users — all users with order counts
+router.get("/users", async (req, res, next) => {
+  try {
+    const result = await query(
+      `SELECT u.id, u.name, u.email, u.role, u.skin_type, u.is_active, u.created_at,
+              COUNT(o.id)::int AS order_count
+       FROM users u
+       LEFT JOIN orders o ON o.user_id = u.id
+       GROUP BY u.id
+       ORDER BY u.created_at DESC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/admin/users/:id/deactivate
+router.put("/users/:id/deactivate", async (req, res, next) => {
+  try {
+    if (Number(req.params.id) === Number(req.user.id)) {
+      return res.status(400).json({ error: "You cannot deactivate your own account" });
+    }
+    const active = req.query.activate === "true";
+    const result = await query(
+      `UPDATE users SET is_active = $1 WHERE id = $2
+       RETURNING id, name, email, role, is_active`,
+      [active, req.params.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.json({
+      user: result.rows[0],
+      message: active ? "Account reactivated" : "Account deactivated",
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/analytics — skin type stats, top products, monthly signups
+router.get("/analytics", async (req, res, next) => {
+  try {
+    const [skinTypes, topProducts, signups, totals] = await Promise.all([
+      query(
+        `SELECT COALESCE(skin_type, 'unset') AS skin_type, COUNT(*)::int AS count
+         FROM users GROUP BY 1 ORDER BY count DESC`
+      ),
+      query(
+        `SELECT p.id, p.name, p.brand, p.rating, COUNT(o.id)::int AS orders
+         FROM products p
+         LEFT JOIN orders o ON o.product_id = p.id
+         WHERE p.is_active = true
+         GROUP BY p.id
+         ORDER BY orders DESC, p.rating DESC NULLS LAST
+         LIMIT 5`
+      ),
+      query(
+        `SELECT to_char(date_trunc('month', created_at), 'YYYY-MM') AS month, COUNT(*)::int AS count
+         FROM users
+         WHERE created_at >= NOW() - INTERVAL '12 months'
+         GROUP BY 1 ORDER BY 1 ASC`
+      ),
+      query(
+        `SELECT
+           (SELECT COUNT(*) FROM users)::int AS total_users,
+           (SELECT COUNT(*) FROM users WHERE is_active = true)::int AS active_users,
+           (SELECT COUNT(*) FROM products WHERE is_active = true)::int AS total_products,
+           (SELECT COUNT(*) FROM orders)::int AS total_orders,
+           (SELECT COUNT(*) FROM chat_history)::int AS chat_messages`
+      ),
+    ]);
+
+    res.json({
+      skin_types: skinTypes.rows,
+      top_products: topProducts.rows,
+      monthly_signups: signups.rows,
+      totals: totals.rows[0],
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/products
+router.post("/products", async (req, res, next) => {
+  try {
+    const body = req.body || {};
+    if (!body.name) return res.status(400).json({ error: "Product name is required" });
+
+    const skinTypes = Array.isArray(body.skin_types)
+      ? body.skin_types.map((s) => String(s).toLowerCase().trim())
+      : [];
+
+    const result = await query(
+      `INSERT INTO products (name, brand, type, description, price, rating, skin_types, image_emoji)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [
+        body.name,
+        body.brand || null,
+        body.type || null,
+        body.description || null,
+        body.price || null,
+        body.rating != null ? Number(body.rating) : null,
+        skinTypes,
+        body.image_emoji || "🧴",
+      ]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/admin/products/:id
+router.put("/products/:id", async (req, res, next) => {
+  try {
+    const body = req.body || {};
+    const allowed = ["name", "brand", "type", "description", "price", "rating", "skin_types", "image_emoji", "is_active"];
+    const sets = [];
+    const params = [];
+
+    for (const field of allowed) {
+      if (body[field] !== undefined) {
+        params.push(field === "skin_types" ? (Array.isArray(body[field]) ? body[field] : []) : body[field]);
+        sets.push(`${field} = $${params.length}`);
+      }
+    }
+    if (sets.length === 0) return res.status(400).json({ error: "No fields to update" });
+
+    params.push(req.params.id);
+    const result = await query(`UPDATE products SET ${sets.join(", ")} WHERE id = $${params.length} RETURNING *`, params);
+    if (result.rows.length === 0) return res.status(404).json({ error: "Product not found" });
+    res.json(result.rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+export default router;

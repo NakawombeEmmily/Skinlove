@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skincare Recommender - Find Your Perfect Products</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Floating Background Animation with Product Elements -->
+    <div class="floating-bg">
+        <div class="float float1"></div>
+        <div class="float float2"></div>
+        <div class="float float3"></div>
+        <div class="float float4"></div>
+        <div class="float float5"></div>
+        <div class="product-float product1">🧴</div>
+        <div class="product-float product2">💧</div>
+        <div class="product-float product3">🌹</div>
+        <div class="product-float product4">✨</div>
+        <div class="product-float product5">💆</div>
+        <div class="product-float product6">🧼</div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">✨ Skincare Pro</div>
+            <ul class="nav-menu">
+                <li><a href="#home" onclick="showPage('home')">Home</a></li>
+                <li><a href="#quiz" onclick="showPage('quiz')">Skin Quiz</a></li>
+                <li><a href="#products" onclick="showPage('products')">Products</a></li>
+                <li><a href="#stores" onclick="showPage('stores')">Stores</a></li>
+                <li id="adminLink" style="display:none;"><a href="#admin" onclick="showPage('admin')">Admin</a></li>
+                <li><a href="#" onclick="logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Home Page -->
+    <div id="home" class="page active">
+        <div class="home-container">
+            <div class="hero-section">
+                <h1>Welcome to Your Skincare Journey ✨</h1>
+                <p>Discover your skin type and get personalized product recommendations</p>
+                <button class="btn btn-primary" onclick="showPage('quiz')">Start Skin Analysis</button>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🔍</div>
+                    <h3>Skin Type Detection</h3>
+                    <p>Identify your skin type with our smart quiz or AI image analysis</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💄</div>
+                    <h3>Product Recommendations</h3>
+                    <p>Get personalized skincare product suggestions</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📍</div>
+                    <h3>Nearby Stores</h3>
+                    <p>Find stores near you that sell your recommended products</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💬</div>
+                    <h3>Smart Assistant</h3>
+                    <p>Chat with our AI assistant for skincare advice</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quiz Page -->
+    <div id="quiz" class="page">
+        <div class="quiz-container">
+            <h2>Let's Determine Your Skin Type 🧴</h2>
+            
+            <div class="quiz-tabs">
+                <button class="tab-btn active" onclick="switchTab('quiz-form')">Quiz</button>
+                <button class="tab-btn" onclick="switchTab('image-upload')">Image Analysis</button>
+            </div>
+
+            <!-- Quiz Form -->
+            <div id="quiz-form" class="tab-content active">
+                <form onsubmit="submitQuiz(event)">
+                    <div class="form-group">
+                        <label>How oily is your skin? (1-10)</label>
+                        <input type="range" id="oiliness" name="oiliness" min="1" max="10" value="5">
+                        <span id="oilValue">5</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Pore Size?</label>
+                        <select name="pores" required>
+                            <option value="">Select...</option>
+                            <option value="small">Small</option>
+                            <option value="medium">Medium</option>
+                            <option value="large">Large</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Skin Texture?</label>
+                        <select name="texture" required>
+                            <option value="">Select...</option>
+                            <option value="smooth">Smooth</option>
+                            <option value="bumpy">Bumpy</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Moisture Level? (1-10)</label>
+                        <input type="range" id="moisture" name="moisture" min="1" max="10" value="5">
+                        <span id="moistureValue">5</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Flaking/Dry Patches?</label>
+                        <select name="flaking" required>
+                            <option value="">Select...</option>
+                            <option value="yes">Yes</option>
+                            <option value="no">No</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Skin Sensitivity?</label>
+                        <input type="range" id="sensitivity" name="sensitivity" min="1" max="10" value="5">
+                        <span id="sensitivityValue">5</span>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Analyze My Skin</button>
+                </form>
+            </div>
+
+            <!-- Image Upload -->
+            <div id="image-upload" class="tab-content">
+                <div class="upload-area">
+                    <input type="file" id="imageInput" accept="image/*" style="display:none;">
+                    <div class="upload-box" onclick="document.getElementById('imageInput').click()">
+                        <div class="upload-icon">📸</div>
+                        <p>Click to upload a photo of your skin</p>
+                        <small>or drag and drop</small>
+                    </div>
+                    <button id="analyzeImageBtn" class="btn btn-primary" style="display:none;">Analyze Image</button>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div id="quizResults" class="results-section" style="display:none;">
+                <h3>Your Skin Type: <span id="skinTypeResult"></span></h3>
+                <div id="recommendedProducts" class="products-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Products Page -->
+    <div id="products" class="page">
+        <div class="products-container">
+            <h2>Recommended Products 💄</h2>
+            <div class="filter-section">
+                <select id="skinTypeFilter" onchange="filterProducts()">
+                    <option value="">All Skin Types</option>
+                    <option value="oily">Oily</option>
+                    <option value="dry">Dry</option>
+                    <option value="combination">Combination</option>
+                    <option value="sensitive">Sensitive</option>
+                    <option value="normal">Normal</option>
+                </select>
+            </div>
+            <div id="productsGrid" class="products-grid"></div>
+        </div>
+    </div>
+
+    <!-- Stores Page -->
+    <div id="stores" class="page">
+        <div class="stores-container">
+            <h2>Find Nearby Stores 📍</h2>
+            <button class="btn btn-primary" onclick="findNearbyStores()">Get My Location & Find Stores</button>
+            <div id="storesGrid" class="stores-grid"></div>
+        </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div id="admin" class="page">
+        <div class="admin-container">
+            <h2>Admin Dashboard 📊</h2>
+            <div class="admin-stats">
+                <div class="stat-card">
+                    <h4>Total Users</h4>
+                    <p id="totalUsers">0</p>
+                </div>
+                <div class="stat-card">
+                    <h4>Total Analyses</h4>
+                    <p id="totalAnalyses">0</p>
+                </div>
+            </div>
+            <div class="admin-section">
+                <h3>Usage Statistics</h3>
+                <div id="usageStats"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chatbot -->
+    <div class="chatbot">
+        <div class="chat-header" onclick="toggleChat()">💬 Chat with Assistant</div>
+        <div class="chat-box" id="chatBox">
+            <div class="chat-messages" id="chatMessages">
+                <div class="message bot-message">Hello! How can I help you with your skincare?</div>
+            </div>
+            <div class="chat-input">
+                <input type="text" id="chatInput" placeholder="Type your message..." onkeypress="handleChatInput(event)">
+                <button onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login/Register Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content auth-form">
+            <h2>Welcome to Skincare Pro ✨</h2>
+            
+            <div class="auth-tabs">
+                <button class="auth-tab-btn active" onclick="switchAuthTab('login')">Login</button>
+                <button class="auth-tab-btn" onclick="switchAuthTab('register')">Register</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <input type="email" placeholder="Email" required>
+                <input type="password" placeholder="Password" required>
+                <button type="submit" class="btn btn-primary">Login</button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="registerForm" style="display:none;" onsubmit="handleRegister(event)">
+                <input type="text" placeholder="Username" required>
+                <input type="email" placeholder="Email" required>
+                <input type="password" placeholder="Password" required>
+                <button type="submit" class="btn btn-primary">Register</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
