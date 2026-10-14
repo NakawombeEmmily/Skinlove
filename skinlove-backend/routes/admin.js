@@ -55,7 +55,7 @@ router.get("/wishlist", async (req, res, next) => {
     const [items, top] = await Promise.all([
       query(
         `SELECT w.id, w.created_at, u.id AS user_id, u.name, u.email,
-                p.id AS product_id, p.name AS product, p.brand, p.price, p.image_emoji
+                p.id AS product_id, p.name AS product, p.brand, p.price, p.image_emoji, p.image_url
            FROM wishlist w
            JOIN users u ON u.id = w.user_id
            JOIN products p ON p.id = w.product_id
@@ -63,7 +63,7 @@ router.get("/wishlist", async (req, res, next) => {
           LIMIT 200`
       ),
       query(
-        `SELECT p.id, p.name, p.brand, p.image_emoji, COUNT(*)::int AS saves
+        `SELECT p.id, p.name, p.brand, p.image_emoji, p.image_url, COUNT(*)::int AS saves
            FROM wishlist w
            JOIN products p ON p.id = w.product_id
           GROUP BY p.id
@@ -288,8 +288,8 @@ router.post("/products", async (req, res, next) => {
       : [];
 
     const result = await query(
-      `INSERT INTO products (name, brand, type, description, price, rating, skin_types, image_emoji)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      `INSERT INTO products (name, brand, type, description, price, rating, skin_types, image_emoji, image_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
       [
         body.name,
         body.brand || null,
@@ -299,6 +299,7 @@ router.post("/products", async (req, res, next) => {
         body.rating != null ? Number(body.rating) : null,
         skinTypes,
         body.image_emoji || "🧴",
+        body.image_url || null,
       ]
     );
     publish("product", { title: "Product added", detail: `${req.user.name} added product ${body.name}` });
@@ -312,7 +313,7 @@ router.post("/products", async (req, res, next) => {
 router.put("/products/:id", async (req, res, next) => {
   try {
     const body = req.body || {};
-    const allowed = ["name", "brand", "type", "description", "price", "rating", "skin_types", "image_emoji", "is_active"];
+    const allowed = ["name", "brand", "type", "description", "price", "rating", "skin_types", "image_emoji", "image_url", "is_active"];
     const sets = [];
     const params = [];
 

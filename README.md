@@ -8,11 +8,11 @@ A skincare recommendation web app built for East Africa — product discovery, s
 ## Features
 
 - **Authentication** — register / login with JWT (7-day sessions), profile with saved skin type
-- **Products** — browse and filter by skin type, type, and search
+- **Products** — browse and filter by skin type, type, and search; each product can show a photo or an emoji
 - **Wishlist** — save products to your personal list
 - **AI Chat** — built-in app guide + skincare assistant powered by Google Gemini (streamed replies). It knows the SkinLove app, its live product catalogue and Kampala stores.
 - **Find Stores** — locate nearby stores, sorted by real GPS distance (Haversine)
-- **Admin dashboard** — tabbed panel to manage products, stores, users, wishlist activity and analytics
+- **Admin dashboard** — tabbed panel to manage products (including image uploads), stores, users, wishlist activity and analytics
 - **Support escalation** — if a user asks the AI to speak to a human, an alert is raised for admins
 - **Realtime activity feed** — admins receive live events (logins, sign-ups, support requests, wishlist saves, product/store changes) over Server-Sent Events
 

@@ -6,7 +6,7 @@ import { publish } from "../realtime.js";
 
 const router = Router();
 
-const PRODUCT_FIELDS = ["name", "brand", "type", "description", "price", "rating", "skin_types", "image_emoji"];
+const PRODUCT_FIELDS = ["name", "brand", "type", "description", "price", "rating", "skin_types", "image_emoji", "image_url"];
 const SKIN_TYPES = ["oily", "dry", "combination", "normal", "sensitive"];
 
 function normaliseSkinTypes(value) {
@@ -67,8 +67,8 @@ router.post("/", requireAuth, adminOnly, async (req, res, next) => {
     }
     const skin_types = normaliseSkinTypes(body.skin_types);
     const result = await query(
-      `INSERT INTO products (name, brand, type, description, price, rating, skin_types, image_emoji)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO products (name, brand, type, description, price, rating, skin_types, image_emoji, image_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
       [
         body.name,
@@ -79,6 +79,7 @@ router.post("/", requireAuth, adminOnly, async (req, res, next) => {
         body.rating != null ? Number(body.rating) : null,
         skin_types,
         body.image_emoji || "🧴",
+        body.image_url || null,
       ]
     );
     publish("product", { title: "Product added", detail: `${req.user.name} added product ${body.name}` });

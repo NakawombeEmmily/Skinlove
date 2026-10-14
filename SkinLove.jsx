@@ -265,6 +265,7 @@ function Landing({ onSignUp, onLogIn, onExplore }) {
 
 function AuthPage({ onAuth, run, showToast, onBack }) {
   const [mode, setMode] = useState("login");
+  const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "", skin_type: "" });
 
   const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
@@ -337,13 +338,24 @@ function AuthPage({ onAuth, run, showToast, onBack }) {
           </label>
           <label>
             Password
-            <input
-              type="password"
-              value={form.password}
-              onChange={update("password")}
-              placeholder="At least 6 characters"
-              autoComplete={mode === "login" ? "current-password" : "new-password"}
-            />
+            <span className="password-field">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={form.password}
+                onChange={update("password")}
+                placeholder="At least 6 characters"
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? "🙈" : "👁️"}
+              </button>
+            </span>
           </label>
           {mode === "signup" && (
             <label>
@@ -525,7 +537,9 @@ function ProductsPage({ user, run, showToast, onRequireLogin, onUserUpdated }) {
             const wished = wishlistIds.includes(p.id);
             return (
               <article className="product-card" key={p.id}>
-                <div className="product-emoji">{p.image_emoji || "🧴"}</div>
+                <div className="product-emoji">
+                  {p.image_url ? <img className="product-photo" src={p.image_url} alt={p.name} /> : p.image_emoji || "🧴"}
+                </div>
                 <button
                   className={wished ? "wish-btn active" : "wish-btn"}
                   onClick={() => toggleWishlist(p)}
@@ -829,7 +843,9 @@ function ProfilePage({ user, run, showToast, onUserUpdated }) {
           <ul className="wish-list">
             {wishlist.map((p) => (
               <li key={p.id}>
-                <span className="wish-emoji">{p.image_emoji || "🧴"}</span>
+                <span className="wish-emoji">
+                  {p.image_url ? <img className="wish-photo" src={p.image_url} alt={p.name} /> : p.image_emoji || "🧴"}
+                </span>
                 <span className="wish-name">
                   {p.name}
                   <small>{p.price}</small>
@@ -866,6 +882,7 @@ function AdminPage({ run, showToast }) {
     price: "",
     rating: "",
     image_emoji: "🧴",
+    image_url: "",
     description: "",
     skin_types: [],
   });
@@ -980,6 +997,40 @@ function AdminPage({ run, showToast }) {
 
   const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
 
+  const onImagePick = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      showToast("Please choose an image file");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("Image is too large — please pick one under 5MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 800;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        setForm((f) => ({ ...f, image_url: canvas.toDataURL("image/jpeg", 0.82) }));
+      };
+      img.onerror = () => showToast("Could not read that image");
+      img.src = reader.result;
+    };
+    reader.onerror = () => showToast("Could not read that file");
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const clearImage = () => setForm((f) => ({ ...f, image_url: "" }));
+
   const toggleSkin = (t) =>
     setForm((f) => ({
       ...f,
@@ -1000,7 +1051,7 @@ function AdminPage({ run, showToast }) {
     );
     if (data) {
       showToast(`${data.name} added`, "success");
-      setForm({ ...form, name: "", brand: "", price: "", rating: "", description: "" });
+      setForm({ ...form, name: "", brand: "", price: "", rating: "", description: "", image_url: "" });
       loadAll();
     }
   };
@@ -1363,7 +1414,8 @@ function AdminPage({ run, showToast }) {
                       <tr key={w.id}>
                         <td>{w.name}</td>
                         <td>
-                          {w.image_emoji} {w.product}
+                          {w.image_url ? <img className="admin-thumb" src={w.image_url} alt={w.product} /> : w.image_emoji}{" "}
+                          {w.product}
                         </td>
                         <td>{w.brand || "—"}</td>
                         <td>{new Date(w.created_at).toLocaleString()}</td>
@@ -1391,7 +1443,8 @@ function AdminPage({ run, showToast }) {
                   {wishlist.top.map((p) => (
                     <tr key={p.id}>
                       <td>
-                        {p.image_emoji} {p.name}
+                        {p.image_url ? <img className="admin-thumb" src={p.image_url} alt={p.name} /> : p.image_emoji}{" "}
+                        {p.name}
                       </td>
                       <td>{p.saves}</td>
                     </tr>
@@ -1434,10 +1487,23 @@ function AdminPage({ run, showToast }) {
                 Rating
                 <input value={form.rating} onChange={update("rating")} placeholder="4.5" />
               </label>
-              <label>
-                Emoji
-                <input value={form.image_emoji} onChange={update("image_emoji")} />
-              </label>
+            </div>
+            <div className="image-upload-field">
+              <span className="image-upload-label">Product image</span>
+              <span className="image-upload">
+                {form.image_url && (
+                  <span className="image-preview">
+                    <img src={form.image_url} alt="Product preview" />
+                  </span>
+                )}
+                <input type="file" accept="image/*" onChange={onImagePick} />
+                {form.image_url && (
+                  <button type="button" className="link-btn danger" onClick={clearImage}>
+                    Remove image
+                  </button>
+                )}
+              </span>
+              {!form.image_url && <span className="image-hint">PNG or JPG. Falls back to the emoji {form.image_emoji}.</span>}
             </div>
             <label>
               Description

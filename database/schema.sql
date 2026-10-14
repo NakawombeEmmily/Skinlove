@@ -25,6 +25,7 @@ CREATE TABLE products (
   rating DECIMAL(2,1),
   skin_types TEXT[],
   image_emoji VARCHAR(10),
+  image_url TEXT,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT NOW()
 );
