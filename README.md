@@ -10,7 +10,7 @@ A skincare recommendation web app built for East Africa — product discovery, s
 - **Authentication** — register / login with JWT (7-day sessions), profile with saved skin type
 - **Products** — browse and filter by skin type, type, and search
 - **Wishlist** — save products to your personal list
-- **AI Chat** — skincare assistant powered by Anthropic Claude (streamed replies)
+- **AI Chat** — skincare assistant powered by Google Gemini (streamed replies)
 - **Find Stores** — locate nearby stores, sorted by real GPS distance (Haversine)
 - **Admin dashboard** — manage products, deactivate users, view analytics
 
@@ -22,7 +22,7 @@ A skincare recommendation web app built for East Africa — product discovery, s
 | Backend | Node.js + Express, hosted on Render |
 | Database | PostgreSQL (Neon) |
 | Auth | JWT + bcrypt |
-| AI | Anthropic Claude |
+| AI | Google Gemini |
 | Maps/Distance | Browser Geolocation + Haversine |
 
 ## Architecture
@@ -75,7 +75,7 @@ The frontend never talks to Neon directly — all data requests go through the b
 | POST/DELETE | /api/wishlist/:productId | user | add / remove |
 | GET | /api/stores | – | all stores |
 | GET | /api/stores/nearby?lat=&lng= | – | Haversine distance sort |
-| POST | /api/chat | user | Anthropic Claude, streamed |
+| POST | /api/chat | user | Google Gemini, streamed |
 | GET | /api/chat/history | user | last 20 messages |
 | GET/PUT | /api/users/me | user | profile: name, skin_type |
 | GET | /api/admin/users | admin | users + order counts |
@@ -97,7 +97,7 @@ The frontend never talks to Neon directly — all data requests go through the b
 ```bash
 cd skinlove-backend
 npm install
-cp .env.example .env      # fill in DATABASE_URL, JWT_SECRET, ANTHROPIC_API_KEY
+cp .env.example .env      # fill in DATABASE_URL, JWT_SECRET, GEMINI_API_KEY
 npm run dev               # http://localhost:3001/health
 ```
 
@@ -116,7 +116,7 @@ npm run dev               # http://localhost:5173
 |---|---|
 | `DATABASE_URL` | Neon PostgreSQL connection string |
 | `JWT_SECRET` | long random string for signing tokens |
-| `ANTHROPIC_API_KEY` | API key for the AI chat |
+| `GEMINI_API_KEY` | Google Gemini API key for the AI chat |
 | `FRONTEND_URL` | allowed CORS origin(s), comma-separated |
 | `PORT` | server port (Render sets this automatically) |
 

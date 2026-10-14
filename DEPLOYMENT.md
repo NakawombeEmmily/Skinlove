@@ -56,7 +56,7 @@ database credentials hidden from users.
 | POST/DELETE | /api/wishlist/:productId | user | add / remove |
 | GET | /api/stores | – | all stores |
 | GET | /api/stores/nearby?lat=&lng= | – | Haversine distance sort |
-| POST | /api/chat | user | Anthropic claude-sonnet-4-6, streamed |
+| POST | /api/chat | user | Google Gemini, streamed |
 | GET | /api/chat/history | user | last 20 messages |
 | GET/PUT | /api/users/me | user | profile: name, skin_type |
 | GET | /api/admin/users | admin | users + order counts |
@@ -97,7 +97,7 @@ Seeded logins:
    |---|---|
    | DATABASE_URL | your Neon connection string |
    | JWT_SECRET | any long random string |
-   | ANTHROPIC_API_KEY | your Anthropic key |
+   | GEMINI_API_KEY | your Google Gemini key |
    | FRONTEND_URL | https://skinlove.vercel.app |
    | PORT | 3001 (Render sets this automatically) |
 
@@ -152,7 +152,7 @@ Render sleeps after 15 minutes of idle; the first request then takes ~30 seconds
 | Backend hosting | render.com | sleeps after 15 min idle |
 | Database | neon.tech | 0.5 GB storage |
 | Keep-alive ping | cron-job.org | unlimited |
-| AI chatbot | anthropic.com | pay per API call |
+| AI chatbot | aistudio.google.com (Gemini) | free tier / pay per call |
 | Custom domain | register.ug / namecheap.com | ~$10–15/year |
 
 **When to upgrade**
@@ -167,7 +167,7 @@ Render sleeps after 15 minutes of idle; the first request then takes ~30 seconds
 # backend (needs a DATABASE_URL — Neon works fine for this)
 cd skinlove-backend
 npm install
-cp .env.example .env      # fill in DATABASE_URL, JWT_SECRET, ANTHROPIC_API_KEY
+cp .env.example .env      # fill in DATABASE_URL, JWT_SECRET, GEMINI_API_KEY
 npm run dev               # http://localhost:3001/health
 
 # frontend

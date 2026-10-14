@@ -7,8 +7,12 @@ const router = Router();
 
 router.use(requireAuth);
 
-const ANTHROPIC_URL = process.env.ANTHROPIC_API_URL || "https://api.anthropic.com/v1/messages";
-const MODEL = "claude-sonnet-4-6";
+const GEMINI_BASE = process.env.GEMINI_API_URL || "https://generativelanguage.googleapis.com/v1beta";
+const MODEL = process.env.GEMINI_MODEL || "gemini-flash-lite-latest";
+const API_KEY =
+  process.env.GEMINI_API_KEY ||
+  process.env.GOOGLE_API_KEY ||
+  process.env.ANTHROPIC_API_KEY;
 
 function buildSystemPrompt(skinType) {
   return `You are SkinLove Assistant, an expert skincare advisor
@@ -41,7 +45,15 @@ function normaliseMessages(body) {
   return [];
 }
 
-// POST /api/chat — send conversation to Anthropic, stream reply, save history
+// Gemini uses "model" for assistant turns
+function toGeminiContents(messages) {
+  return messages.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
+}
+
+// POST /api/chat — send conversation to Gemini, stream reply, save history
 router.post("/", async (req, res, next) => {
   try {
     const messages = normaliseMessages(req.body || {});
@@ -52,7 +64,7 @@ router.post("/", async (req, res, next) => {
     const userResult = await query("SELECT skin_type FROM users WHERE id = $1", [req.user.id]);
     const skinType = userResult.rows[0]?.skin_type;
 
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!API_KEY) {
       return res.status(503).json({ error: "The AI assistant is not configured yet" });
     }
 
@@ -63,31 +75,30 @@ router.post("/", async (req, res, next) => {
       lastUser.content,
     ]);
 
+    const url = `${GEMINI_BASE}/models/${MODEL}:streamGenerateContent?alt=sse`;
+
     let upstream;
     try {
-      upstream = await fetch(ANTHROPIC_URL, {
+      upstream = await fetch(url, {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          "x-api-key": process.env.ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
+          "x-goog-api-key": API_KEY,
         },
         body: JSON.stringify({
-          model: MODEL,
-          max_tokens: 600,
-          system: buildSystemPrompt(skinType),
-          messages,
-          stream: true,
+          system_instruction: { parts: [{ text: buildSystemPrompt(skinType) }] },
+          contents: toGeminiContents(messages),
+          generationConfig: { maxOutputTokens: 600 },
         }),
       });
     } catch (err) {
-      console.error("[chat] Anthropic unreachable", err.message);
+      console.error("[chat] Gemini unreachable", err.message);
       return res.status(502).json({ error: "The AI assistant is temporarily unavailable" });
     }
 
     if (!upstream.ok || !upstream.body) {
       const detail = await upstream.text().catch(() => "");
-      console.error("[chat] Anthropic error", upstream.status, detail.slice(0, 500));
+      console.error("[chat] Gemini error", upstream.status, detail.slice(0, 500));
       return res.status(502).json({ error: "The AI assistant is temporarily unavailable" });
     }
 
@@ -111,9 +122,12 @@ router.post("/", async (req, res, next) => {
           if (!payload || payload === "[DONE]") continue;
           try {
             const event = JSON.parse(payload);
-            if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
-              fullReply += event.delta.text;
-              res.write(event.delta.text);
+            const parts = event.candidates?.[0]?.content?.parts || [];
+            for (const part of parts) {
+              if (typeof part.text === "string" && part.text) {
+                fullReply += part.text;
+                res.write(part.text);
+              }
             }
           } catch {
             // ignore partial JSON
