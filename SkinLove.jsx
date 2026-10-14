@@ -98,24 +98,6 @@ function StarIcon({ filled = true, className = "" }) {
   );
 }
 
-const oils = [
-  {
-    title: "Golden Rose Oil",
-    description: "A silky botanical blend that restores radiance and softness.",
-    image: "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=900&q=80",
-  },
-  {
-    title: "Nourishing Argan",
-    description: "Deep hydration with antioxidant-rich oils for a luminous glow.",
-    image: "https://images.unsplash.com/photo-1492724441997-5dc865305da7?auto=format&fit=crop&w=900&q=80",
-  },
-  {
-    title: "Fresh Citrus Serum",
-    description: "Brightening and refreshing care with silky absorption.",
-    image: "https://images.unsplash.com/photo-1518976024611-488c8d944ce8?auto=format&fit=crop&w=900&q=80",
-  },
-];
-
 function readStoredUser() {
   try {
     const raw = localStorage.getItem(USER_KEY);
@@ -273,24 +255,6 @@ function Landing({ onSignUp, onLogIn, onExplore }) {
           </div>
         </div>
       </header>
-
-      <section className="section section-light" id="oils">
-        <div className="section-header">
-          <p className="eyebrow">Featured oils</p>
-          <h2>Oil blends that deliver comfort and glow.</h2>
-        </div>
-        <div className="oil-grid">
-          {oils.map((oil) => (
-            <article className="oil-card" key={oil.title}>
-              <img src={oil.image} alt={oil.title} />
-              <div className="oil-card-body">
-                <h3>{oil.title}</h3>
-                <p>{oil.description}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
 
       <section className="section" id="ritual">
         <div className="section-split">
@@ -466,7 +430,6 @@ function AuthPage({ onAuth, run, showToast, onBack }) {
         <button className="link-btn auth-back" onClick={onBack}>
           Back to home
         </button>
-        <p className="auth-hint">Demo admin: admin@skinlove.com · SkinLove2026</p>
       </div>
     </section>
   );
