@@ -1,4 +1,4 @@
-# SkinLove 🌿
+# SkinLove
 
 A skincare recommendation web app built for East Africa — product discovery, skin-type matching, AI skincare chat, nearby store finder, wishlist, and an admin dashboard.
 
@@ -8,12 +8,12 @@ A skincare recommendation web app built for East Africa — product discovery, s
 ## Features
 
 - **Authentication** — register / login with JWT (7-day sessions), profile with saved skin type
-- **Products** — browse and filter by skin type, type, and search; each product can show a photo or an emoji
+- **Products** — browse and filter by skin type, type, and search; each product can show an uploaded photo or a placeholder icon
 - **Wishlist** — save products to your personal list
 - **AI Chat** — built-in app guide + skincare assistant powered by Google Gemini (streamed replies). It knows the SkinLove app, its live product catalogue and Kampala stores.
 - **Find Stores** — locate nearby stores, sorted by real GPS distance (Haversine)
 - **Admin dashboard** — tabbed panel to manage products (including image uploads), stores, users, wishlist activity and analytics
-- **Support escalation** — if a user asks the AI to speak to a human, an alert is raised for admins
+- **Support escalation** — if a user asks the AI to speak to a human, an alert is raised for admins, who can reply directly into the user's chat from the Support tab
 - **Realtime activity feed** — admins receive live events (logins, sign-ups, support requests, wishlist saves, product/store changes) over Server-Sent Events
 
 ## Tech Stack
@@ -52,7 +52,7 @@ The AI Chat is more than a skincare bot — it is the built-in guide to the Skin
 
 Because the catalogue and stores are read live, anything an admin adds or changes is reflected in the assistant's answers immediately. Replies are streamed token-by-token to the browser as plain text.
 
-When a user asks to speak to a real person, the backend raises a **support request** (deduplicated within 30 minutes) that appears on the admin dashboard, sets an `X-Support-Escalated` response header so the user sees a confirmation, and instructs the assistant to acknowledge the hand-off.
+When a user asks to speak to a real person, the backend raises a **support request** (deduplicated within 30 minutes) that appears on the admin dashboard, sets an `X-Support-Escalated` response header so the user sees a confirmation, and instructs the assistant to acknowledge the hand-off. Admins can then send a **reply** from the Support tab, which is written into that user's chat history and shows up in their chat (the chat polls history every few seconds).
 
 The admin panel subscribes to a realtime **activity feed** over Server-Sent Events (`GET /api/admin/events`, authenticated with the JWT). A small in-process event bus (`realtime.js`) publishes logins, sign-ups, support requests, wishlist changes and product/store changes as they happen.
 
@@ -103,6 +103,7 @@ The admin panel subscribes to a realtime **activity feed** over Server-Sent Even
 | GET | /api/admin/analytics | admin | skin types, top products, monthly signups |
 | GET | /api/admin/support | admin | support requests (`?status=all`) |
 | PUT | /api/admin/support/:id/resolve | admin | resolve (`?reopen=true` to reopen) |
+| POST | /api/admin/support/:id/reply | admin | send a reply into the user's chat |
 | GET | /api/admin/logins | admin | recent login/sign-up activity (`?limit=`) |
 | GET | /api/admin/wishlist | admin | all wishlist saves + most-favorited summary |
 | GET/POST/PUT/DELETE | /api/admin/stores(/:id) | admin | manage store merchandise |
@@ -171,4 +172,4 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for the full step-by-step guide.
 
 ## License
 
-Built for East Africa 🌿
+Built for East Africa

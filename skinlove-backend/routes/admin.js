@@ -277,6 +277,39 @@ router.put("/support/:id/resolve", async (req, res, next) => {
   }
 });
 
+// POST /api/admin/support/:id/reply — send a reply into the user's chat
+router.post("/support/:id/reply", async (req, res, next) => {
+  try {
+    const message = String((req.body && req.body.message) || "").trim();
+    if (!message) return res.status(400).json({ error: "Reply message is required" });
+
+    const found = await query("SELECT id, user_id FROM support_requests WHERE id = $1", [req.params.id]);
+    if (found.rows.length === 0) {
+      return res.status(404).json({ error: "Support request not found" });
+    }
+
+    const { user_id } = found.rows[0];
+    await query("INSERT INTO chat_history (user_id, role, message) VALUES ($1, 'assistant', $2)", [
+      user_id,
+      `SkinLove Support: ${message}`,
+    ]);
+    await query(
+      "UPDATE support_requests SET status = 'answered', resolved_at = NOW() WHERE id = $1",
+      [req.params.id]
+    );
+
+    publish("support", {
+      title: "Support reply sent",
+      detail: `${req.user.name} replied to a support request`,
+      user_id,
+    });
+
+    res.json({ message: "Reply sent to the user's chat", user_id });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /api/admin/products
 router.post("/products", async (req, res, next) => {
   try {
@@ -298,7 +331,7 @@ router.post("/products", async (req, res, next) => {
         body.price || null,
         body.rating != null ? Number(body.rating) : null,
         skinTypes,
-        body.image_emoji || "🧴",
+        body.image_emoji || null,
         body.image_url || null,
       ]
     );

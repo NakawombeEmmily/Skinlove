@@ -66,6 +66,7 @@ database credentials hidden from users.
 | POST/PUT | /api/admin/products(/:id) | admin | product management |
 | GET | /api/admin/support | admin | support requests (`?status=all`) |
 | PUT | /api/admin/support/:id/resolve | admin | resolve (`?reopen=true` to reopen) |
+| POST | /api/admin/support/:id/reply | admin | send a reply into the user's chat |
 | GET | /api/admin/logins | admin | recent login/sign-up activity (`?limit=`) |
 | GET | /api/admin/wishlist | admin | all wishlist saves + most-favorited summary |
 | GET/POST/PUT/DELETE | /api/admin/stores(/:id) | admin | manage store merchandise |
@@ -126,15 +127,16 @@ Seeded logins:
 1. Open your Vercel URL.
 2. **Sign up** with your email and pick a skin type.
 3. Log in — check Profile shows the saved skin type.
-4. Browse **Products**, filter by skin type, tap ♡ to wishlist an item.
+4. Browse **Products**, filter by skin type, tap the heart to wishlist an item.
 5. Open **AI Chat** and ask a skincare question (reply streams in).
 6. **Find Stores** → allow GPS → stores sort by real distance from your position.
 7. Log in as `admin@skinlove.com` / `SkinLove2026` → **Admin** tab. Use the tabs to add
    a product, manage stores, view users & recent logins, wishlist activity and analytics.
 8. In AI Chat, type "I want to talk to a human" → the assistant confirms the team was
-   notified, and the request appears in the Admin tab under **Support**. With the Admin
-   tab open, live activity (logins, sign-ups, support requests, wishlist saves, product/
-   store changes) streams into the **Live activity** feed on the Overview tab.
+   notified, and the request appears in the Admin tab under **Support**. Type a reply and
+   click **Send reply** — it appears in that user's chat. With the Admin tab open, live
+   activity (logins, sign-ups, support requests, wishlist saves, product/store changes)
+   streams into the **Live activity** feed on the Overview tab.
 
 ## Step 5 — Add a Custom Domain
 
@@ -186,4 +188,4 @@ npm install
 npm run dev               # http://localhost:5173
 ```
 
-🌿 SkinLove — Built for East Africa · Powered by Vercel + Render + Neon
+SkinLove — Built for East Africa

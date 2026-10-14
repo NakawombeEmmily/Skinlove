@@ -641,6 +641,14 @@ input:disabled {
   line-height: 1;
   padding: 6px 8px;
   border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #5b6472;
+}
+
+.password-toggle svg {
+  display: block;
 }
 
 .password-toggle:hover {
@@ -761,6 +769,11 @@ input:disabled {
   margin-bottom: 10px;
 }
 
+.product-emoji svg {
+  color: #b6a488;
+  display: block;
+}
+
 .product-photo {
   width: 100%;
   height: 180px;
@@ -782,6 +795,13 @@ input:disabled {
   color: #d66e3b;
   cursor: pointer;
   transition: transform 0.18s ease, background 0.18s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wish-btn svg {
+  display: block;
 }
 
 .wish-btn:hover {
@@ -826,6 +846,13 @@ input:disabled {
   color: #f0a500;
   font-size: 0.95rem;
   letter-spacing: 1px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.stars svg {
+  display: block;
 }
 
 .stars-empty {
@@ -1026,6 +1053,10 @@ input:disabled {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.wish-emoji svg {
+  color: #b6a488;
 }
 
 .wish-photo {
@@ -1377,4 +1408,70 @@ input:disabled {
     text-align: center;
   }
 }
+
+/* ============ Support reply ============ */
+.support-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.support-card {
+  border: 1px solid rgba(45, 50, 59, 0.1);
+  border-radius: 16px;
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.support-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.support-email {
+  display: block;
+  font-size: 0.82rem;
+  color: #98a2b0;
+}
+
+.support-open {
+  background: #fde9d2;
+  color: #b46217;
+}
+
+.support-message {
+  margin: 10px 0 4px;
+  color: #3c4753;
+}
+
+.support-meta {
+  margin: 0 0 12px;
+  font-size: 0.78rem;
+  color: #98a2b0;
+}
+
+.reply-form textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid rgba(45, 50, 59, 0.16);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+  background: #fff;
+}
+
+.reply-form textarea:focus {
+  outline: none;
+  border-color: #d66e3b;
+}
+
+.reply-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 10px;
+}
+
 

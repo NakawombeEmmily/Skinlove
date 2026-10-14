@@ -11,6 +11,93 @@ const USER_KEY = "skinlove_user";
 const SKIN_TYPES = ["oily", "dry", "combination", "normal", "sensitive"];
 const PRODUCT_TYPES = ["Cleanser", "Moisturizer", "Sunscreen", "Treatment", "Body Care"];
 
+function EyeIcon({ off = false }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {off ? (
+        <>
+          <path d="M3 3l18 18" />
+          <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+          <path d="M9.4 5.2A9.9 9.9 0 0 1 12 5c5 0 9 4.5 10 7-.5 1.3-1.6 2.9-3.2 4.2" />
+          <path d="M6.3 6.3C4.2 7.6 2.7 9.6 2 12c1 2.5 5 7 10 7 1.4 0 2.7-.3 3.9-.9" />
+        </>
+      ) : (
+        <>
+          <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" />
+          <circle cx="12" cy="12" r="3" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+function HeartIcon({ filled = false }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 20.5S3.5 14.8 3.5 8.9A4.4 4.4 0 0 1 12 6.4a4.4 4.4 0 0 1 8.5 2.5c0 5.9-8.5 11.6-8.5 11.6Z" />
+    </svg>
+  );
+}
+
+function BottleIcon({ className = "" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      width="40"
+      height="40"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M10 2h4v3h-4z" />
+      <path d="M8 5h8a2 2 0 0 1 2 2v12a3 3 0 0 1-3 3h-6a3 3 0 0 1-3-3V7a2 2 0 0 1 2-2Z" />
+      <path d="M9.5 11h5v5h-5z" />
+    </svg>
+  );
+}
+
+function StarIcon({ filled = true, className = "" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      className={className}
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 3.6l2.55 5.17 5.7.83-4.13 4.02.98 5.68L12 16.6l-5.1 2.7.98-5.68L3.75 9.6l5.7-.83Z" />
+    </svg>
+  );
+}
+
 const oils = [
   {
     title: "Golden Rose Oil",
@@ -76,8 +163,9 @@ function Stars({ rating }) {
   const full = Math.round(value);
   return (
     <span className="stars" aria-label={`Rated ${value} out of 5`}>
-      {"★".repeat(full)}
-      <span className="stars-empty">{"★".repeat(Math.max(0, 5 - full))}</span>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <StarIcon key={i} filled={i < full} className={i < full ? "" : "stars-empty"} />
+      ))}
       <span className="stars-value">{value ? value.toFixed(1) : "New"}</span>
     </span>
   );
@@ -106,7 +194,7 @@ function PublicNav({ onLogIn, onSignUp, onExplore }) {
   return (
     <header className="app-nav">
       <button className="brand-btn" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-        🌿 SkinLove
+        SkinLove
       </button>
       <nav className="nav-links">
         <button onClick={onExplore}>Products</button>
@@ -129,7 +217,7 @@ function AppNav({ view, setView, user, onLogout, onHome }) {
   return (
     <header className="app-nav">
       <button className="brand-btn" onClick={onHome}>
-        🌿 SkinLove
+        SkinLove
       </button>
       <nav className="nav-links">
         {item("home", "Home")}
@@ -207,11 +295,11 @@ function Landing({ onSignUp, onLogIn, onExplore }) {
       <section className="section" id="ritual">
         <div className="section-split">
           <div>
-            <p className="eyebrow">Four-terrain journey</p>
+            <p className="eyebrow">How it works</p>
             <h2>From first cleanse to confident skin.</h2>
             <p>
-              Savannah Mastery finds your skin type, Tsavo Fluency matches locally stocked products, the Ethical
-              Savannah keeps advice safe and affordable, and Agent Savannah answers questions any time.
+              We help you find your skin type, match you with locally stocked products, keep advice safe and
+              affordable, and answer your questions any time.
             </p>
             <div className="hero-actions">
               <button className="btn btn-primary" onClick={onSignUp}>
@@ -221,15 +309,15 @@ function Landing({ onSignUp, onLogIn, onExplore }) {
           </div>
           <div className="feature-list">
             <div>
-              <strong>Savannah Mastery</strong>
+              <strong>Find your skin type</strong>
               <p>Answer a few questions and identify your skin type in minutes.</p>
             </div>
             <div>
-              <strong>Tsavo Fluency</strong>
+              <strong>Products for you</strong>
               <p>See products filtered for your skin — Vaseline, Dove, CeraVe, Nivea and more.</p>
             </div>
             <div>
-              <strong>Agent Savannah</strong>
+              <strong>AI assistant</strong>
               <p>Ask the AI assistant anything and get advice under 100 words.</p>
             </div>
           </div>
@@ -307,7 +395,7 @@ function AuthPage({ onAuth, run, showToast, onBack }) {
   return (
     <section className="auth-wrap">
       <div className="auth-card">
-        <p className="eyebrow">{mode === "login" ? "Welcome back" : "Savannah Mastery"}</p>
+        <p className="eyebrow">{mode === "login" ? "Welcome back" : "Join SkinLove"}</p>
         <h2>{mode === "login" ? "Log in to SkinLove" : "Create your account"}</h2>
 
         <div className="auth-tabs">
@@ -353,7 +441,7 @@ function AuthPage({ onAuth, run, showToast, onBack }) {
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 title={showPassword ? "Hide password" : "Show password"}
               >
-                {showPassword ? "🙈" : "👁️"}
+                <EyeIcon off={!showPassword} />
               </button>
             </span>
           </label>
@@ -397,7 +485,7 @@ function Dashboard({ user, setView }) {
     <>
       <section className="dash-hero">
         <div>
-          <p className="eyebrow">Savannah Mastery</p>
+          <p className="eyebrow">Your dashboard</p>
           <h1>Hi {firstName}, let's keep that glow going.</h1>
           <p className="hero-text">
             Your skin type is <strong>{user.skin_type || "not set yet"}</strong>. Everything you see is filtered for
@@ -495,7 +583,7 @@ function ProductsPage({ user, run, showToast, onRequireLogin, onUserUpdated }) {
   return (
     <section className="page-section">
       <div className="section-header">
-        <p className="eyebrow">Tsavo Fluency</p>
+        <p className="eyebrow">Products</p>
         <h2>Products matched to your skin.</h2>
       </div>
 
@@ -538,14 +626,14 @@ function ProductsPage({ user, run, showToast, onRequireLogin, onUserUpdated }) {
             return (
               <article className="product-card" key={p.id}>
                 <div className="product-emoji">
-                  {p.image_url ? <img className="product-photo" src={p.image_url} alt={p.name} /> : p.image_emoji || "🧴"}
+                  {p.image_url ? <img className="product-photo" src={p.image_url} alt={p.name} /> : <BottleIcon />}
                 </div>
                 <button
                   className={wished ? "wish-btn active" : "wish-btn"}
                   onClick={() => toggleWishlist(p)}
                   aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
                 >
-                  {wished ? "♥" : "♡"}
+                  <HeartIcon filled={wished} />
                 </button>
                 <h3>{p.name}</h3>
                 <p className="product-brand">{p.brand || "Unknown brand"}</p>
@@ -611,14 +699,14 @@ function StoresPage({ run, showToast }) {
   return (
     <section className="page-section">
       <div className="section-header">
-        <p className="eyebrow">Ethical Savannah</p>
+        <p className="eyebrow">Stores</p>
         <h2>Stores near you in Kampala.</h2>
         <p className="hero-text">Share your location to sort shops by real distance using GPS.</p>
       </div>
 
       <div className="filter-bar">
         <button className="btn btn-primary btn-small" onClick={findNearby} disabled={locating}>
-          {locating ? "Finding you…" : "📍 Use my GPS"}
+          {locating ? "Finding you…" : "Use my GPS"}
         </button>
         {coords && (
           <span className="coords-chip">
@@ -634,8 +722,8 @@ function StoresPage({ run, showToast }) {
         {stores.map((s) => (
           <article className="store-card" key={s.id}>
             <h3>{s.name}</h3>
-            <p className="store-hours">⏰ {s.hours || "Hours not listed"}</p>
-            {s.distance_km != null && <p className="store-distance">📍 {Number(s.distance_km).toFixed(1)} km away</p>}
+            <p className="store-hours">{s.hours || "Hours not listed"}</p>
+            {s.distance_km != null && <p className="store-distance">{Number(s.distance_km).toFixed(1)} km away</p>}
             <div className="tag-row">
               {(s.available_products || []).map((b) => (
                 <span key={b} className="tag">
@@ -656,6 +744,11 @@ function ChatPage({ user, run, showToast }) {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const endRef = useRef(null);
+  const busyRef = useRef(false);
+
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
 
   useEffect(() => {
     const loadHistory = async () => {
@@ -664,6 +757,27 @@ function ChatPage({ user, run, showToast }) {
     };
     loadHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    const id = setInterval(async () => {
+      if (busyRef.current) return;
+      try {
+        const data = await api("/api/chat/history");
+        if (!data) return;
+        setMessages((prev) => {
+          const mapped = data.map((m) => ({ role: m.role, content: m.message }));
+          const same =
+            mapped.length === prev.length &&
+            mapped.every((m, i) => m.role === prev[i].role && m.content === prev[i].content);
+          return same ? prev : mapped;
+        });
+      } catch {
+        /* ignore transient polling errors */
+      }
+    }, 8000);
+    return () => clearInterval(id);
   }, [user?.id]);
 
   useEffect(() => {
@@ -735,7 +849,7 @@ function ChatPage({ user, run, showToast }) {
   return (
     <section className="page-section chat-section">
       <div className="section-header">
-        <p className="eyebrow">Agent Savannah</p>
+        <p className="eyebrow">AI assistant</p>
         <h2>Ask the SkinLove Assistant.</h2>
         <p className="hero-text">Skincare advice for East African skin, in under 100 words.</p>
       </div>
@@ -839,12 +953,12 @@ function ProfilePage({ user, run, showToast, onUserUpdated }) {
 
         <div className="panel">
           <h3>My wishlist ({wishlist.length})</h3>
-          {wishlist.length === 0 && <p className="empty-state">Nothing saved yet — tap ♡ on a product.</p>}
+          {wishlist.length === 0 && <p className="empty-state">Nothing saved yet — tap the heart on a product.</p>}
           <ul className="wish-list">
             {wishlist.map((p) => (
               <li key={p.id}>
                 <span className="wish-emoji">
-                  {p.image_url ? <img className="wish-photo" src={p.image_url} alt={p.name} /> : p.image_emoji || "🧴"}
+                  {p.image_url ? <img className="wish-photo" src={p.image_url} alt={p.name} /> : <BottleIcon />}
                 </span>
                 <span className="wish-name">
                   {p.name}
@@ -868,6 +982,7 @@ function AdminPage({ run, showToast }) {
   const [users, setUsers] = useState([]);
   const [products, setProducts] = useState([]);
   const [support, setSupport] = useState([]);
+  const [replyDrafts, setReplyDrafts] = useState({});
   const [logins, setLogins] = useState([]);
   const [wishlist, setWishlist] = useState({ items: [], top: [] });
   const [stores, setStores] = useState([]);
@@ -881,7 +996,7 @@ function AdminPage({ run, showToast }) {
     type: "Cleanser",
     price: "",
     rating: "",
-    image_emoji: "🧴",
+    image_emoji: "",
     image_url: "",
     description: "",
     skin_types: [],
@@ -981,6 +1096,22 @@ function AdminPage({ run, showToast }) {
     const data = await run(() => api(`/api/admin/support/${r.id}/resolve`, { method: "PUT" }));
     if (data) {
       showToast(`Support request from ${r.name} marked as resolved`, "success");
+      loadAll();
+    }
+  };
+
+  const sendReply = async (r) => {
+    const text = (replyDrafts[r.id] || "").trim();
+    if (!text) {
+      showToast("Type a reply first");
+      return;
+    }
+    const data = await run(() =>
+      api(`/api/admin/support/${r.id}/reply`, { method: "POST", body: { message: text } })
+    );
+    if (data) {
+      showToast(`Reply sent to ${r.name}'s chat`, "success");
+      setReplyDrafts((d) => ({ ...d, [r.id]: "" }));
       loadAll();
     }
   };
@@ -1284,41 +1415,42 @@ function AdminPage({ run, showToast }) {
         <div className="panel">
           <h3>Support requests — users asking for a human</h3>
           {support.length > 0 ? (
-            <div className="table-scroll">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>User</th>
-                    <th>Email</th>
-                    <th>Message</th>
-                    <th>Raised</th>
-                    <th>Status</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {support.map((r) => (
-                    <tr key={r.id}>
-                      <td>{r.name}</td>
-                      <td>{r.email}</td>
-                      <td>{r.message}</td>
-                      <td>{new Date(r.created_at).toLocaleString()}</td>
-                      <td>{r.status}</td>
-                      <td>
-                        {r.status === "open" && (
-                          <button className="link-btn" onClick={() => resolveSupport(r)}>
-                            Mark resolved
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="support-list">
+              {support.map((r) => (
+                <article className="support-card" key={r.id}>
+                  <div className="support-head">
+                    <div>
+                      <strong>{r.name}</strong>
+                      <span className="support-email">{r.email}</span>
+                    </div>
+                    <span className={r.status === "open" ? "tag support-open" : "tag"}>{r.status}</span>
+                  </div>
+                  <p className="support-message">“{r.message}”</p>
+                  <p className="support-meta">Raised {new Date(r.created_at).toLocaleString()}</p>
+                  <div className="reply-form">
+                    <textarea
+                      rows="2"
+                      placeholder="Type your reply — it appears in the user's chat"
+                      value={replyDrafts[r.id] || ""}
+                      onChange={(e) => setReplyDrafts((d) => ({ ...d, [r.id]: e.target.value }))}
+                    />
+                    <div className="reply-actions">
+                      <button className="btn btn-primary btn-small" onClick={() => sendReply(r)}>
+                        Send reply
+                      </button>
+                      {r.status === "open" && (
+                        <button className="link-btn" onClick={() => resolveSupport(r)}>
+                          Mark resolved
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              ))}
             </div>
           ) : (
             <p className="empty-state">
-              No requests yet. When a user asks to speak to a person in the chat, it appears here instantly.
+              No open requests. When a user asks to speak to a person in the chat, it appears here instantly.
             </p>
           )}
         </div>
@@ -1414,7 +1546,7 @@ function AdminPage({ run, showToast }) {
                       <tr key={w.id}>
                         <td>{w.name}</td>
                         <td>
-                          {w.image_url ? <img className="admin-thumb" src={w.image_url} alt={w.product} /> : w.image_emoji}{" "}
+                          {w.image_url ? <img className="admin-thumb" src={w.image_url} alt={w.product} /> : "—"}{" "}
                           {w.product}
                         </td>
                         <td>{w.brand || "—"}</td>
@@ -1443,7 +1575,7 @@ function AdminPage({ run, showToast }) {
                   {wishlist.top.map((p) => (
                     <tr key={p.id}>
                       <td>
-                        {p.image_url ? <img className="admin-thumb" src={p.image_url} alt={p.name} /> : p.image_emoji}{" "}
+                        {p.image_url ? <img className="admin-thumb" src={p.image_url} alt={p.name} /> : "—"}{" "}
                         {p.name}
                       </td>
                       <td>{p.saves}</td>
@@ -1503,7 +1635,7 @@ function AdminPage({ run, showToast }) {
                   </button>
                 )}
               </span>
-              {!form.image_url && <span className="image-hint">PNG or JPG. Falls back to the emoji {form.image_emoji}.</span>}
+              {!form.image_url && <span className="image-hint">PNG or JPG up to 5MB. Optional — a placeholder icon is shown if you skip it.</span>}
             </div>
             <label>
               Description
@@ -1812,8 +1944,7 @@ export default function SkinLove() {
       <main className="app-main">{content}</main>
 
       <footer className="app-footer">
-        <span>🌿 SkinLove — Built for East Africa</span>
-        <span>Vercel + Render + Neon</span>
+        <span>SkinLove — Built for East Africa</span>
       </footer>
     </div>
   );

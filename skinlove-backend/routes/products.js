@@ -78,7 +78,7 @@ router.post("/", requireAuth, adminOnly, async (req, res, next) => {
         body.price || null,
         body.rating != null ? Number(body.rating) : null,
         skin_types,
-        body.image_emoji || "🧴",
+        body.image_emoji || null,
         body.image_url || null,
       ]
     );
