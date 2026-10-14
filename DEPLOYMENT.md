@@ -36,6 +36,7 @@ database credentials hidden from users.
     ├── index.js           ← includes GET /health (cron keep-alive)
     ├── package.json
     ├── .env.example
+    ├── realtime.js
     ├── db/client.js
     ├── routes/{auth,products,wishlist,stores,chat,users,admin}.js
     └── middleware/{authMiddleware,adminMiddleware}.js
@@ -65,6 +66,10 @@ database credentials hidden from users.
 | POST/PUT | /api/admin/products(/:id) | admin | product management |
 | GET | /api/admin/support | admin | support requests (`?status=all`) |
 | PUT | /api/admin/support/:id/resolve | admin | resolve (`?reopen=true` to reopen) |
+| GET | /api/admin/logins | admin | recent login/sign-up activity (`?limit=`) |
+| GET | /api/admin/wishlist | admin | all wishlist saves + most-favorited summary |
+| GET/POST/PUT/DELETE | /api/admin/stores(/:id) | admin | manage store merchandise |
+| GET | /api/admin/events | admin | Server-Sent Events stream of live activity |
 | GET | /health | – | keep-alive ping for cron-job.org |
 
 ---
@@ -124,10 +129,12 @@ Seeded logins:
 4. Browse **Products**, filter by skin type, tap ♡ to wishlist an item.
 5. Open **AI Chat** and ask a skincare question (reply streams in).
 6. **Find Stores** → allow GPS → stores sort by real distance from your position.
-7. Log in as `admin@skinlove.com` / `SkinLove2026` → **Admin** tab → add a product,
-   deactivate a user, check analytics.
+7. Log in as `admin@skinlove.com` / `SkinLove2026` → **Admin** tab. Use the tabs to add
+   a product, manage stores, view users & recent logins, wishlist activity and analytics.
 8. In AI Chat, type "I want to talk to a human" → the assistant confirms the team was
-   notified, and the request appears in the Admin tab under **Support requests**.
+   notified, and the request appears in the Admin tab under **Support**. With the Admin
+   tab open, live activity (logins, sign-ups, support requests, wishlist saves, product/
+   store changes) streams into the **Live activity** feed on the Overview tab.
 
 ## Step 5 — Add a Custom Domain
 

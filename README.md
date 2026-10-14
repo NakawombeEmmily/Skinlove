@@ -12,8 +12,9 @@ A skincare recommendation web app built for East Africa — product discovery, s
 - **Wishlist** — save products to your personal list
 - **AI Chat** — built-in app guide + skincare assistant powered by Google Gemini (streamed replies). It knows the SkinLove app, its live product catalogue and Kampala stores.
 - **Find Stores** — locate nearby stores, sorted by real GPS distance (Haversine)
-- **Admin dashboard** — manage products, deactivate users, view analytics
+- **Admin dashboard** — tabbed panel to manage products, stores, users, wishlist activity and analytics
 - **Support escalation** — if a user asks the AI to speak to a human, an alert is raised for admins
+- **Realtime activity feed** — admins receive live events (logins, sign-ups, support requests, wishlist saves, product/store changes) over Server-Sent Events
 
 ## Tech Stack
 
@@ -53,6 +54,8 @@ Because the catalogue and stores are read live, anything an admin adds or change
 
 When a user asks to speak to a real person, the backend raises a **support request** (deduplicated within 30 minutes) that appears on the admin dashboard, sets an `X-Support-Escalated` response header so the user sees a confirmation, and instructs the assistant to acknowledge the hand-off.
 
+The admin panel subscribes to a realtime **activity feed** over Server-Sent Events (`GET /api/admin/events`, authenticated with the JWT). A small in-process event bus (`realtime.js`) publishes logins, sign-ups, support requests, wishlist changes and product/store changes as they happen.
+
 ## Repository Layout
 
 ```
@@ -71,6 +74,7 @@ When a user asks to speak to a real person, the backend raises a **support reque
 ├── legacy/                ← original static landing page (archived)
 └── skinlove-backend/      ← Render API root directory
     ├── index.js           ← includes GET /health (cron keep-alive)
+    ├── realtime.js        ← in-process event bus for the admin live feed
     ├── db/client.js
     ├── routes/{auth,products,wishlist,stores,chat,users,admin}.js
     └── middleware/{authMiddleware,adminMiddleware}.js
@@ -99,6 +103,10 @@ When a user asks to speak to a real person, the backend raises a **support reque
 | GET | /api/admin/analytics | admin | skin types, top products, monthly signups |
 | GET | /api/admin/support | admin | support requests (`?status=all`) |
 | PUT | /api/admin/support/:id/resolve | admin | resolve (`?reopen=true` to reopen) |
+| GET | /api/admin/logins | admin | recent login/sign-up activity (`?limit=`) |
+| GET | /api/admin/wishlist | admin | all wishlist saves + most-favorited summary |
+| GET/POST/PUT/DELETE | /api/admin/stores(/:id) | admin | manage store merchandise |
+| GET | /api/admin/events | admin | Server-Sent Events stream of live activity |
 | GET | /health | – | keep-alive ping |
 
 ## Demo Accounts

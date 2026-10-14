@@ -2,6 +2,7 @@ import { Router } from "express";
 import fetch from "node-fetch";
 import { query } from "../db/client.js";
 import { requireAuth } from "../middleware/authMiddleware.js";
+import { publish } from "../realtime.js";
 
 const router = Router();
 
@@ -166,8 +167,15 @@ router.post("/", async (req, res, next) => {
     const escalate = wantsHuman(lastUser.content);
     if (escalate) {
       try {
-        await createSupportRequest(req.user.id, lastUser.content);
+        const created = await createSupportRequest(req.user.id, lastUser.content);
         res.setHeader("X-Support-Escalated", "1");
+        if (created) {
+          publish("support", {
+            title: "Support request",
+            detail: `${req.user.name} asked to speak to a human: "${lastUser.content.slice(0, 120)}"`,
+            user_id: req.user.id,
+          });
+        }
       } catch (err) {
         console.error("[chat] support request failed", err.message);
       }

@@ -74,9 +74,20 @@ CREATE TABLE support_requests (
   resolved_at TIMESTAMP
 );
 
+-- Login activity (for the admin panel's real-time feed and audit)
+CREATE TABLE login_events (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  email VARCHAR(150),
+  ip VARCHAR(45),
+  user_agent VARCHAR(255),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Helpful indexes
 CREATE INDEX idx_products_skin_types ON products USING GIN (skin_types);
 CREATE INDEX idx_chat_history_user ON chat_history (user_id, created_at);
 CREATE INDEX idx_orders_user ON orders (user_id);
 CREATE INDEX idx_wishlist_user ON wishlist (user_id);
 CREATE INDEX idx_support_requests_status ON support_requests (status, created_at DESC);
+CREATE INDEX idx_login_events_created ON login_events (created_at DESC);

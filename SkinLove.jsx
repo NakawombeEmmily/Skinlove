@@ -847,10 +847,16 @@ function ProfilePage({ user, run, showToast, onUserUpdated }) {
 }
 
 function AdminPage({ run, showToast }) {
+  const [tab, setTab] = useState("overview");
   const [analytics, setAnalytics] = useState(null);
   const [users, setUsers] = useState([]);
   const [products, setProducts] = useState([]);
   const [support, setSupport] = useState([]);
+  const [logins, setLogins] = useState([]);
+  const [wishlist, setWishlist] = useState({ items: [], top: [] });
+  const [stores, setStores] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [live, setLive] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [form, setForm] = useState({
@@ -863,23 +869,96 @@ function AdminPage({ run, showToast }) {
     description: "",
     skin_types: [],
   });
+  const [storeForm, setStoreForm] = useState({ name: "", hours: "", available_products: "" });
+  const [editingStoreId, setEditingStoreId] = useState(null);
+  const [storeEdit, setStoreEdit] = useState({ name: "", hours: "", available_products: "" });
 
   const loadAll = useCallback(async () => {
-    const [a, u, p, s] = await Promise.all([
+    const [a, u, p, s, l, w, st] = await Promise.all([
       run(() => api("/api/admin/analytics")),
       run(() => api("/api/admin/users")),
       run(() => api("/api/products")),
       run(() => api("/api/admin/support")),
+      run(() => api("/api/admin/logins")),
+      run(() => api("/api/admin/wishlist")),
+      run(() => api("/api/admin/stores")),
     ]);
     if (a) setAnalytics(a);
     if (u) setUsers(u);
     if (p) setProducts(p);
     if (s) setSupport(s);
+    if (l) setLogins(l);
+    if (w) setWishlist(w);
+    if (st) setStores(st);
   }, [run]);
+
+  const loadAllRef = useRef(loadAll);
+  loadAllRef.current = loadAll;
 
   useEffect(() => {
     loadAll();
   }, [loadAll]);
+
+  useEffect(() => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return undefined;
+    const controller = new AbortController();
+    let cancelled = false;
+    let refreshTimer = null;
+
+    const scheduleRefresh = () => {
+      if (refreshTimer) return;
+      refreshTimer = setTimeout(() => {
+        refreshTimer = null;
+        loadAllRef.current();
+      }, 1200);
+    };
+
+    (async () => {
+      while (!cancelled) {
+        try {
+          const res = await fetch(`${API_BASE}/api/admin/events`, {
+            headers: { Authorization: `Bearer ${token}` },
+            signal: controller.signal,
+          });
+          if (!res.ok || !res.body) throw new Error(`stream ${res.status}`);
+          setLive(true);
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const chunks = buffer.split("\n\n");
+            buffer = chunks.pop() || "";
+            for (const chunk of chunks) {
+              const line = chunk.split("\n").find((l) => l.startsWith("data:"));
+              if (!line) continue;
+              try {
+                const evt = JSON.parse(line.slice(5).trim());
+                setEvents((prev) => [evt, ...prev].slice(0, 60));
+                scheduleRefresh();
+              } catch {
+                /* ignore keep-alive / malformed frames */
+              }
+            }
+          }
+        } catch {
+          /* connection dropped — retry below */
+        }
+        if (cancelled) break;
+        setLive(false);
+        await new Promise((resolve) => setTimeout(resolve, 4000));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (refreshTimer) clearTimeout(refreshTimer);
+      controller.abort();
+    };
+  }, []);
 
   const resolveSupport = async (r) => {
     const data = await run(() => api(`/api/admin/support/${r.id}/resolve`, { method: "PUT" }));
@@ -953,295 +1032,588 @@ function AdminPage({ run, showToast }) {
     }
   };
 
+  const parseList = (value) =>
+    String(value || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+  const addStore = async (e) => {
+    e.preventDefault();
+    if (!storeForm.name) {
+      showToast("Store name is required");
+      return;
+    }
+    const data = await run(() =>
+      api("/api/admin/stores", {
+        method: "POST",
+        body: { ...storeForm, available_products: parseList(storeForm.available_products) },
+      })
+    );
+    if (data) {
+      showToast(`${data.name} added`, "success");
+      setStoreForm({ name: "", hours: "", available_products: "" });
+      loadAll();
+    }
+  };
+
+  const startStoreEdit = (s) => {
+    setEditingStoreId(s.id);
+    setStoreEdit({
+      name: s.name || "",
+      hours: s.hours || "",
+      available_products: (s.available_products || []).join(", "),
+    });
+  };
+
+  const saveStoreEdit = async (id) => {
+    const data = await run(() =>
+      api(`/api/admin/stores/${id}`, {
+        method: "PUT",
+        body: { ...storeEdit, available_products: parseList(storeEdit.available_products) },
+      })
+    );
+    if (data) {
+      showToast("Store updated", "success");
+      setEditingStoreId(null);
+      loadAll();
+    }
+  };
+
+  const deleteStore = async (s) => {
+    const data = await run(() => api(`/api/admin/stores/${s.id}`, { method: "DELETE" }));
+    if (data) {
+      showToast(`${s.name} removed`, "success");
+      loadAll();
+    }
+  };
+
+  const openSupport = support.filter((r) => r.status === "open");
   const totals = analytics?.totals;
+
+  const tabs = [
+    ["overview", "Overview"],
+    ["support", openSupport.length ? `Support (${openSupport.length})` : "Support"],
+    ["users", "Users & logins"],
+    ["wishlist", "Wishlist"],
+    ["products", "Products"],
+    ["stores", "Stores"],
+  ];
 
   return (
     <section className="page-section">
       <div className="section-header">
         <p className="eyebrow">Admin panel</p>
-        <h2>Users, products and analytics.</h2>
+        <h2>Users, products, stores and live activity.</h2>
       </div>
 
-      <div className="stat-row">
-        <div className="stat-card">
-          <strong>{totals ? totals.total_users : "—"}</strong>
-          <span>Total users</span>
-        </div>
-        <div className="stat-card">
-          <strong>{totals ? totals.active_users : "—"}</strong>
-          <span>Active users</span>
-        </div>
-        <div className="stat-card">
-          <strong>{totals ? totals.total_products : "—"}</strong>
-          <span>Products</span>
-        </div>
-        <div className="stat-card">
-          <strong>{totals ? totals.total_orders : "—"}</strong>
-          <span>Orders</span>
-        </div>
-        <div className="stat-card">
-          <strong>{totals ? totals.chat_messages : "—"}</strong>
-          <span>Chat messages</span>
-        </div>
-        <div className="stat-card">
-          <strong>{totals ? totals.open_support : "—"}</strong>
-          <span>Open support</span>
-        </div>
-      </div>
-
-      <div className="panel">
-        <h3>Support requests — users asking for a human</h3>
-        {support.length > 0 ? (
-          <div className="table-scroll">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Email</th>
-                  <th>Message</th>
-                  <th>Raised</th>
-                  <th>Status</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {support.map((r) => (
-                  <tr key={r.id}>
-                    <td>{r.name}</td>
-                    <td>{r.email}</td>
-                    <td>{r.message}</td>
-                    <td>{new Date(r.created_at).toLocaleString()}</td>
-                    <td>{r.status}</td>
-                    <td>
-                      {r.status === "open" && (
-                        <button className="link-btn" onClick={() => resolveSupport(r)}>
-                          Mark resolved
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="empty-state">No open requests. You'll see an alert here when a user asks to speak to a person.</p>
-        )}
-      </div>
-
-      <div className="admin-grid">
-        <div className="panel">
-          <h3>Skin type breakdown</h3>
-          {(analytics?.skin_types || []).map((row) => (
-            <div className="bar-row" key={row.skin_type}>
-              <span className="bar-label">{row.skin_type}</span>
-              <span className="bar-track">
-                <span
-                  className="bar-fill"
-                  style={{
-                    width: `${Math.max(6, Math.round((row.count / Math.max(1, totals?.total_users || 1)) * 100))}%`,
-                  }}
-                />
-              </span>
-              <span className="bar-count">{row.count}</span>
-            </div>
-          ))}
-          {!analytics && <p className="empty-state">Loading analytics…</p>}
-        </div>
-
-        <div className="panel">
-          <h3>Top products</h3>
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Rating</th>
-                <th>Orders</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(analytics?.top_products || []).map((p) => (
-                <tr key={p.id}>
-                  <td>{p.name}</td>
-                  <td>{p.rating ?? "—"}</td>
-                  <td>{p.orders}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <h3>Monthly signups</h3>
-          <table className="admin-table">
-            <tbody>
-              {(analytics?.monthly_signups || []).map((row) => (
-                <tr key={row.month}>
-                  <td>{row.month}</td>
-                  <td>{row.count}</td>
-                </tr>
-              ))}
-              {!analytics?.monthly_signups?.length && (
-                <tr>
-                  <td colSpan="2">No signups in the last 12 months</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="panel">
-        <h3>User management</h3>
-        <div className="table-scroll">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Skin type</th>
-                <th>Orders</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id} className={u.is_active ? "" : "row-inactive"}>
-                  <td>{u.name}</td>
-                  <td>{u.email}</td>
-                  <td>{u.role}</td>
-                  <td>{u.skin_type || "—"}</td>
-                  <td>{u.order_count}</td>
-                  <td>{u.is_active ? "Active" : "Deactivated"}</td>
-                  <td>
-                    <button className="link-btn" onClick={() => toggleDeactivate(u)}>
-                      {u.is_active ? "Deactivate" : "Reactivate"}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="admin-grid">
-        <form className="panel" onSubmit={addProduct}>
-          <h3>Add product</h3>
-          <label>
-            Name
-            <input value={form.name} onChange={update("name")} />
-          </label>
-          <label>
-            Brand
-            <input value={form.brand} onChange={update("brand")} />
-          </label>
-          <div className="form-row">
-            <label>
-              Category
-              <select value={form.type} onChange={update("type")}>
-                {PRODUCT_TYPES.map((t) => (
-                  <option key={t}>{t}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Price (UGX)
-              <input value={form.price} onChange={update("price")} placeholder="UGX 24,000" />
-            </label>
-            <label>
-              Rating
-              <input value={form.rating} onChange={update("rating")} placeholder="4.5" />
-            </label>
-            <label>
-              Emoji
-              <input value={form.image_emoji} onChange={update("image_emoji")} />
-            </label>
-          </div>
-          <label>
-            Description
-            <textarea value={form.description} onChange={update("description")} rows="3" />
-          </label>
-          <div className="tag-row">
-            {SKIN_TYPES.map((t) => (
-              <button
-                type="button"
-                key={t}
-                className={form.skin_types.includes(t) ? "tag tag-toggle active" : "tag tag-toggle"}
-                onClick={() => toggleSkin(t)}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-          <button type="submit" className="btn btn-primary">
-            Add product
+      <div className="admin-tabs">
+        {tabs.map(([key, label]) => (
+          <button key={key} className={tab === key ? "admin-tab active" : "admin-tab"} onClick={() => setTab(key)}>
+            {label}
           </button>
-        </form>
+        ))}
+      </div>
 
-        <div className="panel">
-          <h3>Product management</h3>
-          <div className="table-scroll">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Brand</th>
-                  <th>Price</th>
-                  <th>Rating</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.map((p) =>
-                  editingId === p.id ? (
-                    <tr key={p.id}>
-                      <td>
-                        <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
-                      </td>
-                      <td>
-                        <input value={editForm.brand} onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })} />
-                      </td>
-                      <td>
-                        <input value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} />
-                      </td>
-                      <td>
-                        <input
-                          value={editForm.rating}
-                          onChange={(e) => setEditForm({ ...editForm, rating: e.target.value })}
-                        />
-                      </td>
-                      <td>
-                        <button className="link-btn" onClick={() => saveEdit(p.id)}>
-                          Save
-                        </button>
-                        <button className="link-btn" onClick={() => setEditingId(null)}>
-                          Cancel
-                        </button>
-                      </td>
-                    </tr>
-                  ) : (
+      {tab === "overview" && (
+        <>
+          <div className="stat-row">
+            <div className="stat-card">
+              <strong>{totals ? totals.total_users : "—"}</strong>
+              <span>Total users</span>
+            </div>
+            <div className="stat-card">
+              <strong>{totals ? totals.active_users : "—"}</strong>
+              <span>Active users</span>
+            </div>
+            <div className="stat-card">
+              <strong>{totals ? totals.total_products : "—"}</strong>
+              <span>Products</span>
+            </div>
+            <div className="stat-card">
+              <strong>{totals ? totals.total_orders : "—"}</strong>
+              <span>Orders</span>
+            </div>
+            <div className="stat-card">
+              <strong>{totals ? totals.chat_messages : "—"}</strong>
+              <span>Chat messages</span>
+            </div>
+            <div className="stat-card">
+              <strong>{totals ? totals.open_support : "—"}</strong>
+              <span>Open support</span>
+            </div>
+          </div>
+
+          <div className="panel">
+            <h3>
+              Live activity
+              <span className={live ? "live-dot on" : "live-dot"} />
+            </h3>
+            {events.length > 0 ? (
+              <ul className="live-feed">
+                {events.map((evt, i) => (
+                  <li key={`${evt.at}-${i}`}>
+                    <span className={`feed-tag feed-${evt.type}`}>{evt.type}</span>
+                    <span className="feed-detail">{evt.detail || evt.title}</span>
+                    <span className="feed-time">{new Date(evt.at).toLocaleTimeString()}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="empty-state">
+                Waiting for activity — logins, sign-ups, support requests, wishlist saves and store updates appear here
+                in real time.
+              </p>
+            )}
+          </div>
+
+          <div className="admin-grid">
+            <div className="panel">
+              <h3>Skin type breakdown</h3>
+              {(analytics?.skin_types || []).map((row) => (
+                <div className="bar-row" key={row.skin_type}>
+                  <span className="bar-label">{row.skin_type}</span>
+                  <span className="bar-track">
+                    <span
+                      className="bar-fill"
+                      style={{
+                        width: `${Math.max(6, Math.round((row.count / Math.max(1, totals?.total_users || 1)) * 100))}%`,
+                      }}
+                    />
+                  </span>
+                  <span className="bar-count">{row.count}</span>
+                </div>
+              ))}
+              {!analytics && <p className="empty-state">Loading analytics…</p>}
+            </div>
+
+            <div className="panel">
+              <h3>Top products</h3>
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Rating</th>
+                    <th>Orders</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(analytics?.top_products || []).map((p) => (
                     <tr key={p.id}>
                       <td>{p.name}</td>
-                      <td>{p.brand}</td>
-                      <td>{p.price}</td>
                       <td>{p.rating ?? "—"}</td>
+                      <td>{p.orders}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <h3>Monthly signups</h3>
+              <table className="admin-table">
+                <tbody>
+                  {(analytics?.monthly_signups || []).map((row) => (
+                    <tr key={row.month}>
+                      <td>{row.month}</td>
+                      <td>{row.count}</td>
+                    </tr>
+                  ))}
+                  {!analytics?.monthly_signups?.length && (
+                    <tr>
+                      <td colSpan="2">No signups in the last 12 months</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {tab === "support" && (
+        <div className="panel">
+          <h3>Support requests — users asking for a human</h3>
+          {support.length > 0 ? (
+            <div className="table-scroll">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Message</th>
+                    <th>Raised</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {support.map((r) => (
+                    <tr key={r.id}>
+                      <td>{r.name}</td>
+                      <td>{r.email}</td>
+                      <td>{r.message}</td>
+                      <td>{new Date(r.created_at).toLocaleString()}</td>
+                      <td>{r.status}</td>
                       <td>
-                        <button className="link-btn" onClick={() => startEdit(p)}>
-                          Edit
-                        </button>
-                        <button className="link-btn danger" onClick={() => deleteProduct(p)}>
-                          Remove
+                        {r.status === "open" && (
+                          <button className="link-btn" onClick={() => resolveSupport(r)}>
+                            Mark resolved
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="empty-state">
+              No requests yet. When a user asks to speak to a person in the chat, it appears here instantly.
+            </p>
+          )}
+        </div>
+      )}
+
+      {tab === "users" && (
+        <>
+          <div className="panel">
+            <h3>User management</h3>
+            <div className="table-scroll">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Skin type</th>
+                    <th>Orders</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((u) => (
+                    <tr key={u.id} className={u.is_active ? "" : "row-inactive"}>
+                      <td>{u.name}</td>
+                      <td>{u.email}</td>
+                      <td>{u.role}</td>
+                      <td>{u.skin_type || "—"}</td>
+                      <td>{u.order_count}</td>
+                      <td>{u.is_active ? "Active" : "Deactivated"}</td>
+                      <td>
+                        <button className="link-btn" onClick={() => toggleDeactivate(u)}>
+                          {u.is_active ? "Deactivate" : "Reactivate"}
                         </button>
                       </td>
                     </tr>
-                  )
-                )}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="panel">
+            <h3>Recent logins</h3>
+            {logins.length > 0 ? (
+              <div className="table-scroll">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>Email</th>
+                      <th>IP</th>
+                      <th>When</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logins.map((l) => (
+                      <tr key={l.id}>
+                        <td>{l.name || "—"}</td>
+                        <td>{l.email}</td>
+                        <td>{l.ip || "—"}</td>
+                        <td>{new Date(l.created_at).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="empty-state">No logins recorded yet.</p>
+            )}
+          </div>
+        </>
+      )}
+
+      {tab === "wishlist" && (
+        <div className="admin-grid">
+          <div className="panel">
+            <h3>Wishlist activity</h3>
+            {wishlist.items.length > 0 ? (
+              <div className="table-scroll">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>Product</th>
+                      <th>Brand</th>
+                      <th>Saved</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {wishlist.items.map((w) => (
+                      <tr key={w.id}>
+                        <td>{w.name}</td>
+                        <td>
+                          {w.image_emoji} {w.product}
+                        </td>
+                        <td>{w.brand || "—"}</td>
+                        <td>{new Date(w.created_at).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="empty-state">No products saved to wishlists yet.</p>
+            )}
+          </div>
+
+          <div className="panel">
+            <h3>Most favorited</h3>
+            {wishlist.top.length > 0 ? (
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Saves</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {wishlist.top.map((p) => (
+                    <tr key={p.id}>
+                      <td>
+                        {p.image_emoji} {p.name}
+                      </td>
+                      <td>{p.saves}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="empty-state">No favorites yet.</p>
+            )}
           </div>
         </div>
-      </div>
+      )}
+
+      {tab === "products" && (
+        <div className="admin-grid">
+          <form className="panel" onSubmit={addProduct}>
+            <h3>Add product</h3>
+            <label>
+              Name
+              <input value={form.name} onChange={update("name")} />
+            </label>
+            <label>
+              Brand
+              <input value={form.brand} onChange={update("brand")} />
+            </label>
+            <div className="form-row">
+              <label>
+                Category
+                <select value={form.type} onChange={update("type")}>
+                  {PRODUCT_TYPES.map((t) => (
+                    <option key={t}>{t}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Price (UGX)
+                <input value={form.price} onChange={update("price")} placeholder="UGX 24,000" />
+              </label>
+              <label>
+                Rating
+                <input value={form.rating} onChange={update("rating")} placeholder="4.5" />
+              </label>
+              <label>
+                Emoji
+                <input value={form.image_emoji} onChange={update("image_emoji")} />
+              </label>
+            </div>
+            <label>
+              Description
+              <textarea value={form.description} onChange={update("description")} rows="3" />
+            </label>
+            <div className="tag-row">
+              {SKIN_TYPES.map((t) => (
+                <button
+                  type="button"
+                  key={t}
+                  className={form.skin_types.includes(t) ? "tag tag-toggle active" : "tag tag-toggle"}
+                  onClick={() => toggleSkin(t)}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            <button type="submit" className="btn btn-primary">
+              Add product
+            </button>
+          </form>
+
+          <div className="panel">
+            <h3>Product management</h3>
+            <div className="table-scroll">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Brand</th>
+                    <th>Price</th>
+                    <th>Rating</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {products.map((p) =>
+                    editingId === p.id ? (
+                      <tr key={p.id}>
+                        <td>
+                          <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                        </td>
+                        <td>
+                          <input value={editForm.brand} onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })} />
+                        </td>
+                        <td>
+                          <input value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} />
+                        </td>
+                        <td>
+                          <input
+                            value={editForm.rating}
+                            onChange={(e) => setEditForm({ ...editForm, rating: e.target.value })}
+                          />
+                        </td>
+                        <td>
+                          <button className="link-btn" onClick={() => saveEdit(p.id)}>
+                            Save
+                          </button>
+                          <button className="link-btn" onClick={() => setEditingId(null)}>
+                            Cancel
+                          </button>
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={p.id}>
+                        <td>{p.name}</td>
+                        <td>{p.brand}</td>
+                        <td>{p.price}</td>
+                        <td>{p.rating ?? "—"}</td>
+                        <td>
+                          <button className="link-btn" onClick={() => startEdit(p)}>
+                            Edit
+                          </button>
+                          <button className="link-btn danger" onClick={() => deleteProduct(p)}>
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === "stores" && (
+        <div className="admin-grid">
+          <form className="panel" onSubmit={addStore}>
+            <h3>Add store</h3>
+            <label>
+              Name
+              <input value={storeForm.name} onChange={(e) => setStoreForm({ ...storeForm, name: e.target.value })} />
+            </label>
+            <label>
+              Opening hours
+              <input
+                value={storeForm.hours}
+                onChange={(e) => setStoreForm({ ...storeForm, hours: e.target.value })}
+                placeholder="Mon–Sat 9am–7pm"
+              />
+            </label>
+            <label>
+              Products (comma separated)
+              <textarea
+                value={storeForm.available_products}
+                onChange={(e) => setStoreForm({ ...storeForm, available_products: e.target.value })}
+                rows="3"
+                placeholder="Cleansers, Moisturisers, Sunscreen"
+              />
+            </label>
+            <button type="submit" className="btn btn-primary">
+              Add store
+            </button>
+          </form>
+
+          <div className="panel">
+            <h3>Store management</h3>
+            <div className="table-scroll">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Store</th>
+                    <th>Hours</th>
+                    <th>Products</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stores.map((s) =>
+                    editingStoreId === s.id ? (
+                      <tr key={s.id}>
+                        <td>
+                          <input value={storeEdit.name} onChange={(e) => setStoreEdit({ ...storeEdit, name: e.target.value })} />
+                        </td>
+                        <td>
+                          <input value={storeEdit.hours} onChange={(e) => setStoreEdit({ ...storeEdit, hours: e.target.value })} />
+                        </td>
+                        <td>
+                          <input
+                            value={storeEdit.available_products}
+                            onChange={(e) => setStoreEdit({ ...storeEdit, available_products: e.target.value })}
+                          />
+                        </td>
+                        <td>
+                          <button className="link-btn" onClick={() => saveStoreEdit(s.id)}>
+                            Save
+                          </button>
+                          <button className="link-btn" onClick={() => setEditingStoreId(null)}>
+                            Cancel
+                          </button>
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={s.id}>
+                        <td>{s.name}</td>
+                        <td>{s.hours || "—"}</td>
+                        <td>{(s.available_products || []).length || "—"}</td>
+                        <td>
+                          <button className="link-btn" onClick={() => startStoreEdit(s)}>
+                            Edit
+                          </button>
+                          <button className="link-btn danger" onClick={() => deleteStore(s)}>
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { query } from "../db/client.js";
 import { requireAuth } from "../middleware/authMiddleware.js";
+import { publish } from "../realtime.js";
 
 const router = Router();
 
@@ -57,6 +58,11 @@ router.post("/register", async (req, res, next) => {
     );
 
     const user = result.rows[0];
+    publish("signup", {
+      title: "New sign-up",
+      detail: `${user.name} (${user.email}) joined SkinLove`,
+      user_id: user.id,
+    });
     res.status(201).json({ token: signToken(user), user: publicUser(user) });
   } catch (err) {
     next(err);
@@ -81,6 +87,20 @@ router.post("/login", async (req, res, next) => {
     if (user.is_active === false) {
       return res.status(403).json({ error: "This account has been deactivated" });
     }
+
+    try {
+      await query(
+        "INSERT INTO login_events (user_id, email, ip, user_agent) VALUES ($1, $2, $3, $4)",
+        [user.id, user.email, req.ip || null, (req.headers["user-agent"] || "").slice(0, 255)]
+      );
+    } catch (logErr) {
+      console.error("[auth] login_events insert failed", logErr.message);
+    }
+    publish("login", {
+      title: "User login",
+      detail: `${user.name} (${user.email}) signed in`,
+      user_id: user.id,
+    });
 
     res.json({ token: signToken(user), user: publicUser(user) });
   } catch (err) {

@@ -2,10 +2,150 @@ import { Router } from "express";
 import { query } from "../db/client.js";
 import { requireAuth } from "../middleware/authMiddleware.js";
 import { adminOnly } from "../middleware/adminMiddleware.js";
+import { bus, publish } from "../realtime.js";
 
 const router = Router();
 
 router.use(requireAuth, adminOnly);
+
+// GET /api/admin/events — Server-Sent Events stream of live activity
+router.get("/events", (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  if (res.flushHeaders) res.flushHeaders();
+  res.write("retry: 5000\n\n");
+
+  const onEvent = (event) => {
+    res.write(`data: ${JSON.stringify(event)}\n\n`);
+  };
+  bus.on("event", onEvent);
+
+  const ping = setInterval(() => res.write(": ping\n\n"), 25000);
+
+  req.on("close", () => {
+    clearInterval(ping);
+    bus.off("event", onEvent);
+    res.end();
+  });
+});
+
+// GET /api/admin/logins — recent login activity
+router.get("/logins", async (req, res, next) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    const result = await query(
+      `SELECT l.id, l.user_id, l.email, l.ip, l.created_at, u.name
+         FROM login_events l
+         LEFT JOIN users u ON u.id = l.user_id
+        ORDER BY l.created_at DESC
+        LIMIT $1`,
+      [limit]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/wishlist — wishlist/favorites activity across all users
+router.get("/wishlist", async (req, res, next) => {
+  try {
+    const [items, top] = await Promise.all([
+      query(
+        `SELECT w.id, w.created_at, u.id AS user_id, u.name, u.email,
+                p.id AS product_id, p.name AS product, p.brand, p.price, p.image_emoji
+           FROM wishlist w
+           JOIN users u ON u.id = w.user_id
+           JOIN products p ON p.id = w.product_id
+          ORDER BY w.created_at DESC
+          LIMIT 200`
+      ),
+      query(
+        `SELECT p.id, p.name, p.brand, p.image_emoji, COUNT(*)::int AS saves
+           FROM wishlist w
+           JOIN products p ON p.id = w.product_id
+          GROUP BY p.id
+          ORDER BY saves DESC, p.name ASC
+          LIMIT 10`
+      ),
+    ]);
+    res.json({ items: items.rows, top: top.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- Store merchandise management ----
+router.get("/stores", async (req, res, next) => {
+  try {
+    const result = await query("SELECT * FROM stores ORDER BY name ASC");
+    res.json(result.rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/stores", async (req, res, next) => {
+  try {
+    const b = req.body || {};
+    if (!b.name) return res.status(400).json({ error: "Store name is required" });
+    const products = Array.isArray(b.available_products)
+      ? b.available_products.map((s) => String(s).trim()).filter(Boolean)
+      : [];
+    const result = await query(
+      `INSERT INTO stores (name, latitude, longitude, hours, available_products)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [b.name, b.latitude ?? null, b.longitude ?? null, b.hours || null, products]
+    );
+    publish("store", { title: "Store added", detail: `${req.user.name} added store ${b.name}` });
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put("/stores/:id", async (req, res, next) => {
+  try {
+    const b = req.body || {};
+    const allowed = ["name", "latitude", "longitude", "hours", "available_products"];
+    const sets = [];
+    const params = [];
+    for (const field of allowed) {
+      if (b[field] !== undefined) {
+        params.push(
+          field === "available_products"
+            ? Array.isArray(b[field])
+              ? b[field].map((s) => String(s).trim()).filter(Boolean)
+              : []
+            : b[field]
+        );
+        sets.push(`${field} = $${params.length}`);
+      }
+    }
+    if (sets.length === 0) return res.status(400).json({ error: "No fields to update" });
+
+    params.push(req.params.id);
+    const result = await query(`UPDATE stores SET ${sets.join(", ")} WHERE id = $${params.length} RETURNING *`, params);
+    if (result.rows.length === 0) return res.status(404).json({ error: "Store not found" });
+    publish("store", { title: "Store updated", detail: `${req.user.name} updated store ${result.rows[0].name}` });
+    res.json(result.rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete("/stores/:id", async (req, res, next) => {
+  try {
+    const result = await query("DELETE FROM stores WHERE id = $1 RETURNING name", [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: "Store not found" });
+    publish("store", { title: "Store removed", detail: `${req.user.name} removed store ${result.rows[0].name}` });
+    res.json({ message: "Store removed" });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // GET /api/admin/users — all users with order counts
 router.get("/users", async (req, res, next) => {
@@ -161,6 +301,7 @@ router.post("/products", async (req, res, next) => {
         body.image_emoji || "🧴",
       ]
     );
+    publish("product", { title: "Product added", detail: `${req.user.name} added product ${body.name}` });
     res.status(201).json(result.rows[0]);
   } catch (err) {
     next(err);
@@ -186,6 +327,7 @@ router.put("/products/:id", async (req, res, next) => {
     params.push(req.params.id);
     const result = await query(`UPDATE products SET ${sets.join(", ")} WHERE id = $${params.length} RETURNING *`, params);
     if (result.rows.length === 0) return res.status(404).json({ error: "Product not found" });
+    publish("product", { title: "Product updated", detail: `${req.user.name} updated product ${result.rows[0].name}` });
     res.json(result.rows[0]);
   } catch (err) {
     next(err);

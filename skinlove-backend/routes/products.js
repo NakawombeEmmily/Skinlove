@@ -2,6 +2,7 @@ import { Router } from "express";
 import { query } from "../db/client.js";
 import { requireAuth } from "../middleware/authMiddleware.js";
 import { adminOnly } from "../middleware/adminMiddleware.js";
+import { publish } from "../realtime.js";
 
 const router = Router();
 
@@ -80,6 +81,7 @@ router.post("/", requireAuth, adminOnly, async (req, res, next) => {
         body.image_emoji || "🧴",
       ]
     );
+    publish("product", { title: "Product added", detail: `${req.user.name} added product ${body.name}` });
     res.status(201).json(result.rows[0]);
   } catch (err) {
     next(err);
@@ -112,6 +114,7 @@ router.put("/:id", requireAuth, adminOnly, async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Product not found" });
     }
+    publish("product", { title: "Product updated", detail: `${req.user.name} updated product ${result.rows[0].name}` });
     res.json(result.rows[0]);
   } catch (err) {
     next(err);
@@ -122,12 +125,13 @@ router.put("/:id", requireAuth, adminOnly, async (req, res, next) => {
 router.delete("/:id", requireAuth, adminOnly, async (req, res, next) => {
   try {
     const result = await query(
-      "UPDATE products SET is_active = false WHERE id = $1 RETURNING id, is_active",
+      "UPDATE products SET is_active = false WHERE id = $1 RETURNING id, name, is_active",
       [req.params.id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Product not found" });
     }
+    publish("product", { title: "Product removed", detail: `${req.user.name} removed product ${result.rows[0].name}` });
     res.json({ message: "Product removed", product: result.rows[0] });
   } catch (err) {
     next(err);
