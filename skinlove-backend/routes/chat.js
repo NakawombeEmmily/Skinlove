@@ -27,7 +27,7 @@ Features and how to use them:
 - Admin (admins only): add/edit products, deactivate users, and view analytics.
 Supported skin types: dry, oily, normal, combination, sensitive.`;
 
-function buildSystemPrompt({ skinType, catalogue, stores }) {
+function buildSystemPrompt({ skinType, catalogue, stores, escalate }) {
   return `You are SkinLove Assistant, the built-in AI guide and skincare advisor for the SkinLove app. You specialise in East African skin tones and products available in Uganda and Kenya (brands like Vaseline, Dove, Nivea, Neutrogena, CeraVe, Simple, Olay, Palmolive, Pond's and Glow & Lovely).
 
 Always give advice that is:
@@ -44,6 +44,9 @@ ${catalogue || "(no products loaded)"}
 
 If asked about stores or where to buy, use these live store locations:
 ${stores || "(no stores loaded)"}
+${escalate ? `
+
+ESCALATION: The user has just asked to speak to a real person. The SkinLove support team has already been alerted in the admin dashboard. Briefly and warmly confirm that you have passed their message to a human on the team who will get back to them shortly, and ask how you can help while they wait.` : ""}
 
 Rules:
 - Keep responses concise (under 120 words), warm, and actionable.
@@ -101,6 +104,46 @@ async function loadAppContext() {
   return { catalogue, stores: storeList };
 }
 
+// Detect a user asking for a real person instead of the bot.
+const HUMAN_REQUEST_PATTERNS = [
+  // talk / speak / chat + to + person-like noun
+  /\b(?:talk(?:ing)?|speak(?:ing)?|chat(?:ting)?|get\s+through|put\s+me\s+through|get\s+me\s+through|connect|transfer)\s+(?:to|with)\s+(?:a|an|the)?\s*(?:real\s+|actual\s+|human\s+)?(?:human|person|people|agent|representative|support|someone|somebody)\b/i,
+  // connect / put / get me through to someone
+  /\b(?:put|get|connect|transfer|pass|send)\s+me\s+(?:through|on|to|with)\b/i,
+  // explicit real/actual person
+  /\b(?:real|actual)\s+(?:person|human|people)\b/i,
+  /\bhuman\s+(?:being|agent|support|representative|help|assistance|contact)\b/i,
+  // support phrasing
+  /\bcustomer\s+(?:care|service|support|relations)\b/i,
+  /\b(?:support|help|care)\s+(?:team|agent|person|staff|desk|line|member|centre|center)\b/i,
+  /\blive\s+(?:agent|person|support|chat|help)\b/i,
+  // authority / escalation
+  /\b(?:manager|supervisor|escalate|senior agent)\b/i,
+  // want / need a human
+  /\b(?:want|need|would like|like to|get me|give me|find me|send me|reach)\s+(?:a|an|the|to)?\s*(?:real\s+|actual\s+)?(?:human|person|agent|representative|someone)\b/i,
+  /\bis there\s+(?:a|an|any)?\s*(?:real\s+|human\s+)?(?:human|person|agent|representative)\b/i,
+  /\bsomeone\s+(?:else|real|human|different)\b/i,
+];
+
+function wantsHuman(text) {
+  if (typeof text !== "string" || !text) return false;
+  return HUMAN_REQUEST_PATTERNS.some((re) => re.test(text));
+}
+
+// Raise a support request (avoid spamming duplicates within a 30-min window)
+async function createSupportRequest(userId, message) {
+  const recent = await query(
+    `SELECT 1 FROM support_requests
+      WHERE user_id = $1 AND status = 'open' AND created_at > NOW() - INTERVAL '30 minutes'
+      LIMIT 1`,
+    [userId]
+  );
+  if (recent.rows.length > 0) return false;
+
+  await query("INSERT INTO support_requests (user_id, message) VALUES ($1, $2)", [userId, message]);
+  return true;
+}
+
 // POST /api/chat — send conversation to Gemini, stream reply, save history
 router.post("/", async (req, res, next) => {
   try {
@@ -116,11 +159,23 @@ router.post("/", async (req, res, next) => {
       return res.status(503).json({ error: "The AI assistant is not configured yet" });
     }
 
-    const { catalogue, stores } = await loadAppContext();
-    const systemPrompt = buildSystemPrompt({ skinType, catalogue, stores });
-
     // Persist the latest user message
     const lastUser = [...messages].reverse().find((m) => m.role === "user");
+
+    // If the user wants a human, alert the admin team
+    const escalate = wantsHuman(lastUser.content);
+    if (escalate) {
+      try {
+        await createSupportRequest(req.user.id, lastUser.content);
+        res.setHeader("X-Support-Escalated", "1");
+      } catch (err) {
+        console.error("[chat] support request failed", err.message);
+      }
+    }
+
+    const { catalogue, stores } = await loadAppContext();
+    const systemPrompt = buildSystemPrompt({ skinType, catalogue, stores, escalate });
+
     await query("INSERT INTO chat_history (user_id, role, message) VALUES ($1, 'user', $2)", [
       req.user.id,
       lastUser.content,

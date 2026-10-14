@@ -64,8 +64,19 @@ CREATE TABLE orders (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Raised when a user asks the AI assistant to speak to a human / support
+CREATE TABLE support_requests (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  message TEXT,
+  status VARCHAR(20) DEFAULT 'open',
+  created_at TIMESTAMP DEFAULT NOW(),
+  resolved_at TIMESTAMP
+);
+
 -- Helpful indexes
 CREATE INDEX idx_products_skin_types ON products USING GIN (skin_types);
 CREATE INDEX idx_chat_history_user ON chat_history (user_id, created_at);
 CREATE INDEX idx_orders_user ON orders (user_id);
 CREATE INDEX idx_wishlist_user ON wishlist (user_id);
+CREATE INDEX idx_support_requests_status ON support_requests (status, created_at DESC);

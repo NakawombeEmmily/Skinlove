@@ -18,6 +18,7 @@ app.set("trust proxy", 1);
 app.use(
   cors({
     origin: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(",") : true,
+    exposedHeaders: ["X-Support-Escalated"],
   })
 );
 app.use(express.json({ limit: "1mb" }));

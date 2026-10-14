@@ -77,7 +77,8 @@ router.get("/analytics", async (req, res, next) => {
            (SELECT COUNT(*) FROM users WHERE is_active = true)::int AS active_users,
            (SELECT COUNT(*) FROM products WHERE is_active = true)::int AS total_products,
            (SELECT COUNT(*) FROM orders)::int AS total_orders,
-           (SELECT COUNT(*) FROM chat_history)::int AS chat_messages`
+           (SELECT COUNT(*) FROM chat_history)::int AS chat_messages,
+           (SELECT COUNT(*) FROM support_requests WHERE status = 'open')::int AS open_support`
       ),
     ]);
 
@@ -87,6 +88,50 @@ router.get("/analytics", async (req, res, next) => {
       monthly_signups: signups.rows,
       totals: totals.rows[0],
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/support — support requests raised when a user asks for a human
+// ?status=open (default: open) or ?status=all
+router.get("/support", async (req, res, next) => {
+  try {
+    const filter = req.query.status === "all" ? null : req.query.status || "open";
+    const result = await query(
+      `SELECT s.id, s.user_id, s.message, s.status, s.created_at, s.resolved_at,
+              u.name, u.email
+         FROM support_requests s
+         JOIN users u ON u.id = s.user_id
+        ${filter ? "WHERE s.status = $1" : ""}
+        ORDER BY
+          CASE WHEN s.status = 'open' THEN 0 ELSE 1 END,
+          s.created_at DESC`,
+      filter ? [filter] : []
+    );
+    res.json(result.rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/admin/support/:id/resolve  (?reopen=true to mark open again)
+router.put("/support/:id/resolve", async (req, res, next) => {
+  try {
+    const reopen = req.query.reopen === "true";
+    const status = reopen ? "open" : "resolved";
+    const result = await query(
+      `UPDATE support_requests
+          SET status = $1,
+              resolved_at = CASE WHEN $2 = 'resolved' THEN NOW() ELSE NULL END
+        WHERE id = $3
+        RETURNING id, status`,
+      [status, status, req.params.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Support request not found" });
+    }
+    res.json(result.rows[0]);
   } catch (err) {
     next(err);
   }

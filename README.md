@@ -13,6 +13,7 @@ A skincare recommendation web app built for East Africa — product discovery, s
 - **AI Chat** — built-in app guide + skincare assistant powered by Google Gemini (streamed replies). It knows the SkinLove app, its live product catalogue and Kampala stores.
 - **Find Stores** — locate nearby stores, sorted by real GPS distance (Haversine)
 - **Admin dashboard** — manage products, deactivate users, view analytics
+- **Support escalation** — if a user asks the AI to speak to a human, an alert is raised for admins
 
 ## Tech Stack
 
@@ -49,6 +50,8 @@ The AI Chat is more than a skincare bot — it is the built-in guide to the Skin
 - **The user's skin type** — so advice is personalised.
 
 Because the catalogue and stores are read live, anything an admin adds or changes is reflected in the assistant's answers immediately. Replies are streamed token-by-token to the browser as plain text.
+
+When a user asks to speak to a real person, the backend raises a **support request** (deduplicated within 30 minutes) that appears on the admin dashboard, sets an `X-Support-Escalated` response header so the user sees a confirmation, and instructs the assistant to acknowledge the hand-off.
 
 ## Repository Layout
 
@@ -88,12 +91,14 @@ Because the catalogue and stores are read live, anything an admin adds or change
 | POST/DELETE | /api/wishlist/:productId | user | add / remove |
 | GET | /api/stores | – | all stores |
 | GET | /api/stores/nearby?lat=&lng= | – | Haversine distance sort |
-| POST | /api/chat | user | Gemini, app-aware, streamed |
+| POST | /api/chat | user | Gemini, app-aware, streamed; alerts admin if user asks for a human |
 | GET | /api/chat/history | user | last 20 messages |
 | GET/PUT | /api/users/me | user | profile: name, skin_type |
 | GET | /api/admin/users | admin | users + order counts |
 | PUT | /api/admin/users/:id/deactivate | admin | deactivate (`?activate=true` to restore) |
 | GET | /api/admin/analytics | admin | skin types, top products, monthly signups |
+| GET | /api/admin/support | admin | support requests (`?status=all`) |
+| PUT | /api/admin/support/:id/resolve | admin | resolve (`?reopen=true` to reopen) |
 | GET | /health | – | keep-alive ping |
 
 ## Demo Accounts

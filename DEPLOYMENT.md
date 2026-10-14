@@ -56,13 +56,15 @@ database credentials hidden from users.
 | POST/DELETE | /api/wishlist/:productId | user | add / remove |
 | GET | /api/stores | – | all stores |
 | GET | /api/stores/nearby?lat=&lng= | – | Haversine distance sort |
-| POST | /api/chat | user | Google Gemini, streamed |
+| POST | /api/chat | user | Google Gemini, streamed; alerts admin if user asks for a human |
 | GET | /api/chat/history | user | last 20 messages |
 | GET/PUT | /api/users/me | user | profile: name, skin_type |
 | GET | /api/admin/users | admin | users + order counts |
 | PUT | /api/admin/users/:id/deactivate | admin | deactivate (?activate=true to restore) |
 | GET | /api/admin/analytics | admin | skin types, top products, monthly signups |
 | POST/PUT | /api/admin/products(/:id) | admin | product management |
+| GET | /api/admin/support | admin | support requests (`?status=all`) |
+| PUT | /api/admin/support/:id/resolve | admin | resolve (`?reopen=true` to reopen) |
 | GET | /health | – | keep-alive ping for cron-job.org |
 
 ---
@@ -124,6 +126,8 @@ Seeded logins:
 6. **Find Stores** → allow GPS → stores sort by real distance from your position.
 7. Log in as `admin@skinlove.com` / `SkinLove2026` → **Admin** tab → add a product,
    deactivate a user, check analytics.
+8. In AI Chat, type "I want to talk to a human" → the assistant confirms the team was
+   notified, and the request appears in the Admin tab under **Support requests**.
 
 ## Step 5 — Add a Custom Domain
 

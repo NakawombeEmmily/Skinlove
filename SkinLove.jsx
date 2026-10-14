@@ -684,6 +684,13 @@ function ChatPage({ user, run, showToast }) {
         throw new Error((detail && detail.error) || "Connection issue — please try again");
       }
 
+      if (res.headers.get("X-Support-Escalated") === "1") {
+        showToast(
+          "Your message has been passed to the SkinLove support team — a human will follow up shortly.",
+          "success"
+        );
+      }
+
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let acc = "";
@@ -843,6 +850,7 @@ function AdminPage({ run, showToast }) {
   const [analytics, setAnalytics] = useState(null);
   const [users, setUsers] = useState([]);
   const [products, setProducts] = useState([]);
+  const [support, setSupport] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [form, setForm] = useState({
@@ -857,19 +865,29 @@ function AdminPage({ run, showToast }) {
   });
 
   const loadAll = useCallback(async () => {
-    const [a, u, p] = await Promise.all([
+    const [a, u, p, s] = await Promise.all([
       run(() => api("/api/admin/analytics")),
       run(() => api("/api/admin/users")),
       run(() => api("/api/products")),
+      run(() => api("/api/admin/support")),
     ]);
     if (a) setAnalytics(a);
     if (u) setUsers(u);
     if (p) setProducts(p);
+    if (s) setSupport(s);
   }, [run]);
 
   useEffect(() => {
     loadAll();
   }, [loadAll]);
+
+  const resolveSupport = async (r) => {
+    const data = await run(() => api(`/api/admin/support/${r.id}/resolve`, { method: "PUT" }));
+    if (data) {
+      showToast(`Support request from ${r.name} marked as resolved`, "success");
+      loadAll();
+    }
+  };
 
   const toggleDeactivate = async (u) => {
     const data = await run(() =>
@@ -965,6 +983,50 @@ function AdminPage({ run, showToast }) {
           <strong>{totals ? totals.chat_messages : "—"}</strong>
           <span>Chat messages</span>
         </div>
+        <div className="stat-card">
+          <strong>{totals ? totals.open_support : "—"}</strong>
+          <span>Open support</span>
+        </div>
+      </div>
+
+      <div className="panel">
+        <h3>Support requests — users asking for a human</h3>
+        {support.length > 0 ? (
+          <div className="table-scroll">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Email</th>
+                  <th>Message</th>
+                  <th>Raised</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {support.map((r) => (
+                  <tr key={r.id}>
+                    <td>{r.name}</td>
+                    <td>{r.email}</td>
+                    <td>{r.message}</td>
+                    <td>{new Date(r.created_at).toLocaleString()}</td>
+                    <td>{r.status}</td>
+                    <td>
+                      {r.status === "open" && (
+                        <button className="link-btn" onClick={() => resolveSupport(r)}>
+                          Mark resolved
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="empty-state">No open requests. You'll see an alert here when a user asks to speak to a person.</p>
+        )}
       </div>
 
       <div className="admin-grid">
