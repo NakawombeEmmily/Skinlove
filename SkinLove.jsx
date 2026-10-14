@@ -4,7 +4,7 @@ import "./SkinLove.css";
 const API_BASE =
   (typeof process !== "undefined" && process.env && process.env.REACT_APP_API_URL) ||
   (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL) ||
-  "https://skinlove-api.onrender.com";
+  "https://skinlove.onrender.com";
 
 const TOKEN_KEY = "skinlove_token";
 const USER_KEY = "skinlove_user";

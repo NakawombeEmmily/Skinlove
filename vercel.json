@@ -1,6 +1,6 @@
 {
   "env": {
-    "REACT_APP_API_URL": "https://skinlove-api.onrender.com",
-    "VITE_API_URL": "https://skinlove-api.onrender.com"
+    "REACT_APP_API_URL": "https://skinlove.onrender.com",
+    "VITE_API_URL": "https://skinlove.onrender.com"
   }
 }

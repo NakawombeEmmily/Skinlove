@@ -1,2 +1,146 @@
-# Skinlove
-skincare
+# SkinLove 🌿
+
+A skincare recommendation web app built for East Africa — product discovery, skin-type matching, AI skincare chat, nearby store finder, wishlist, and an admin dashboard.
+
+**Live app:** https://skinlove-two.vercel.app
+**API:** https://skinlove.onrender.com
+
+## Features
+
+- **Authentication** — register / login with JWT (7-day sessions), profile with saved skin type
+- **Products** — browse and filter by skin type, type, and search
+- **Wishlist** — save products to your personal list
+- **AI Chat** — skincare assistant powered by Anthropic Claude (streamed replies)
+- **Find Stores** — locate nearby stores, sorted by real GPS distance (Haversine)
+- **Admin dashboard** — manage products, deactivate users, view analytics
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 18 + Vite, hosted on Vercel |
+| Backend | Node.js + Express, hosted on Render |
+| Database | PostgreSQL (Neon) |
+| Auth | JWT + bcrypt |
+| AI | Anthropic Claude |
+| Maps/Distance | Browser Geolocation + Haversine |
+
+## Architecture
+
+```
+User Browser
+    ↓  loads UI
+VERCEL (React + Vite Frontend)
+    ↓  HTTP API calls (fetch)
+RENDER (Node.js + Express Backend)
+    ↓  SQL queries
+NEON (PostgreSQL Database)
+```
+
+The frontend never talks to Neon directly — all data requests go through the backend, keeping database credentials hidden from users.
+
+## Repository Layout
+
+```
+.
+├── index.html             ← Vite entry
+├── main.jsx               ← React bootstrap
+├── SkinLove.jsx           ← the whole app (auth, products, stores, chat, profile, admin)
+├── SkinLove.css
+├── vite.config.js
+├── vercel.json
+├── database/
+│   ├── schema.sql         ← tables
+│   └── seed.sql           ← demo users, products, Kampala stores
+├── legacy/                ← original static landing page (archived)
+└── skinlove-backend/      ← Render API root directory
+    ├── index.js           ← includes GET /health (cron keep-alive)
+    ├── db/client.js
+    ├── routes/{auth,products,wishlist,stores,chat,users,admin}.js
+    └── middleware/{authMiddleware,adminMiddleware}.js
+```
+
+## API Endpoints
+
+| Method | Route | Auth | Purpose |
+|---|---|---|---|
+| POST | /api/auth/register | – | name, email, password, skin_type → JWT |
+| POST | /api/auth/login | – | returns JWT (7 days) |
+| POST | /api/auth/logout | user | clear token |
+| GET | /api/auth/me | user | current user |
+| GET | /api/products | – | `?skin_type=` `&type=` `&search=` |
+| GET | /api/products/:id | – | single product |
+| POST/PUT/DELETE | /api/products(/:id) | admin | create / update / soft delete |
+| GET | /api/wishlist | user | wishlist with product details |
+| POST/DELETE | /api/wishlist/:productId | user | add / remove |
+| GET | /api/stores | – | all stores |
+| GET | /api/stores/nearby?lat=&lng= | – | Haversine distance sort |
+| POST | /api/chat | user | Anthropic Claude, streamed |
+| GET | /api/chat/history | user | last 20 messages |
+| GET/PUT | /api/users/me | user | profile: name, skin_type |
+| GET | /api/admin/users | admin | users + order counts |
+| PUT | /api/admin/users/:id/deactivate | admin | deactivate (`?activate=true` to restore) |
+| GET | /api/admin/analytics | admin | skin types, top products, monthly signups |
+| GET | /health | – | keep-alive ping |
+
+## Demo Accounts
+
+| Account | Email | Password | Role |
+|---|---|---|---|
+| Admin | admin@skinlove.com | SkinLove2026 | admin |
+| Demo | demo@skinlove.com | demo1234 | user |
+
+## Local Development
+
+### Backend
+
+```bash
+cd skinlove-backend
+npm install
+cp .env.example .env      # fill in DATABASE_URL, JWT_SECRET, ANTHROPIC_API_KEY
+npm run dev               # http://localhost:3001/health
+```
+
+### Frontend
+
+```bash
+npm install
+npm run dev               # http://localhost:5173
+```
+
+### Environment Variables
+
+**Backend (`skinlove-backend/.env`)**
+
+| Key | Description |
+|---|---|
+| `DATABASE_URL` | Neon PostgreSQL connection string |
+| `JWT_SECRET` | long random string for signing tokens |
+| `ANTHROPIC_API_KEY` | API key for the AI chat |
+| `FRONTEND_URL` | allowed CORS origin(s), comma-separated |
+| `PORT` | server port (Render sets this automatically) |
+
+**Frontend (Vercel → Environment Variables)**
+
+| Key | Description |
+|---|---|
+| `VITE_API_URL` | backend base URL, e.g. `https://skinlove.onrender.com` (build-time) |
+
+## Database Setup
+
+In the Neon SQL Editor, run these in order (once):
+
+1. `database/schema.sql` — creates all tables
+2. `database/seed.sql` — seeds demo users, products, and Kampala stores
+
+## Deployment
+
+- **Database** → [neon.tech](https://neon.tech) (free tier)
+- **Backend** → [render.com](https://render.com) — root directory `skinlove-backend`, build `npm install`, start `node index.js`
+- **Frontend** → [vercel.com](https://vercel.com) — Vite preset, output `dist`, set `VITE_API_URL` at build time
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the full step-by-step guide.
+
+## License
+
+Built for East Africa 🌿
