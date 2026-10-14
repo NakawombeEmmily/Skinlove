@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 .skinlove-page {
   position: relative;
   min-height: 100vh;
