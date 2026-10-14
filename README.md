@@ -10,7 +10,7 @@ A skincare recommendation web app built for East Africa — product discovery, s
 - **Authentication** — register / login with JWT (7-day sessions), profile with saved skin type
 - **Products** — browse and filter by skin type, type, and search
 - **Wishlist** — save products to your personal list
-- **AI Chat** — skincare assistant powered by Google Gemini (streamed replies)
+- **AI Chat** — built-in app guide + skincare assistant powered by Google Gemini (streamed replies). It knows the SkinLove app, its live product catalogue and Kampala stores.
 - **Find Stores** — locate nearby stores, sorted by real GPS distance (Haversine)
 - **Admin dashboard** — manage products, deactivate users, view analytics
 
@@ -22,7 +22,7 @@ A skincare recommendation web app built for East Africa — product discovery, s
 | Backend | Node.js + Express, hosted on Render |
 | Database | PostgreSQL (Neon) |
 | Auth | JWT + bcrypt |
-| AI | Google Gemini |
+| AI | Google Gemini (streamed, app-aware) |
 | Maps/Distance | Browser Geolocation + Haversine |
 
 ## Architecture
@@ -39,6 +39,17 @@ NEON (PostgreSQL Database)
 
 The frontend never talks to Neon directly — all data requests go through the backend, keeping database credentials hidden from users.
 
+## AI Assistant
+
+The AI Chat is more than a skincare bot — it is the built-in guide to the SkinLove app itself. On every request the backend builds a system prompt that includes:
+
+- **App knowledge** — what each tab does and how to use it (Products, Wishlist, Find Stores, Profile, Admin) and the supported skin types.
+- **Live product catalogue** — pulled from the database at request time, so the assistant recommends real items with current names and UGX prices.
+- **Live store list** — the actual Kampala stores and opening hours.
+- **The user's skin type** — so advice is personalised.
+
+Because the catalogue and stores are read live, anything an admin adds or changes is reflected in the assistant's answers immediately. Replies are streamed token-by-token to the browser as plain text.
+
 ## Repository Layout
 
 ```
@@ -49,6 +60,8 @@ The frontend never talks to Neon directly — all data requests go through the b
 ├── SkinLove.css
 ├── vite.config.js
 ├── vercel.json
+├── public/
+│   └── images/            ← static images (served at /images/...)
 ├── database/
 │   ├── schema.sql         ← tables
 │   └── seed.sql           ← demo users, products, Kampala stores
@@ -75,7 +88,7 @@ The frontend never talks to Neon directly — all data requests go through the b
 | POST/DELETE | /api/wishlist/:productId | user | add / remove |
 | GET | /api/stores | – | all stores |
 | GET | /api/stores/nearby?lat=&lng= | – | Haversine distance sort |
-| POST | /api/chat | user | Google Gemini, streamed |
+| POST | /api/chat | user | Gemini, app-aware, streamed |
 | GET | /api/chat/history | user | last 20 messages |
 | GET/PUT | /api/users/me | user | profile: name, skin_type |
 | GET | /api/admin/users | admin | users + order counts |
@@ -119,6 +132,8 @@ npm run dev               # http://localhost:5173
 | `GEMINI_API_KEY` | Google Gemini API key for the AI chat |
 | `FRONTEND_URL` | allowed CORS origin(s), comma-separated |
 | `PORT` | server port (Render sets this automatically) |
+| `GEMINI_MODEL` | *(optional)* chat model — default `gemini-flash-lite-latest` |
+| `GEMINI_API_URL` | *(optional)* override the Gemini API base URL |
 
 **Frontend (Vercel → Environment Variables)**
 
