@@ -30,7 +30,6 @@
 
 .skinlove-hero,
 .section,
-.testimonials,
 .footer-cta {
   position: relative;
   z-index: 1;
@@ -64,7 +63,6 @@
 
 .skinlove-hero h1,
 .section-header h2,
-.testimonials h2,
 .footer-cta h2 {
   margin: 0;
   font-size: clamp(2.8rem, 4vw, 4.8rem);
@@ -78,7 +76,6 @@
 .hero-text,
 .section p,
 .feature-list p,
-.testimonial-card p,
 .footer-cta p {
   color: #55606c;
   line-height: 1.8;
@@ -213,28 +210,6 @@
   display: block;
   margin-bottom: 10px;
   font-size: 1rem;
-}
-
-.testimonials {
-  max-width: 1180px;
-  margin: 0 auto 40px;
-  padding: 0 12px;
-  display: grid;
-  gap: 24px;
-}
-
-.testimonial-card {
-  padding: 34px;
-  border-radius: 32px;
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(45, 50, 59, 0.08);
-  box-shadow: 0 25px 70px rgba(102, 112, 133, 0.12);
-}
-
-.testimonial-card strong {
-  display: block;
-  margin-top: 22px;
-  color: #2d323b;
 }
 
 .footer-cta {

@@ -288,20 +288,6 @@ function Landing({ onSignUp, onLogIn, onExplore }) {
         </div>
       </section>
 
-      <section className="testimonials">
-        <div>
-          <p className="eyebrow">Customer love</p>
-          <h2>Users feel the difference from first touch.</h2>
-        </div>
-        <div className="testimonial-card">
-          <p>
-            “The SkinLove front end feels warm, luxurious, and easy to navigate. The oil visuals make the whole
-            experience feel more natural and inviting.”
-          </p>
-          <strong>— Anna M., beauty founder</strong>
-        </div>
-      </section>
-
       <section className="footer-cta">
         <div>
           <h2>Ready for your best skin yet?</h2>
