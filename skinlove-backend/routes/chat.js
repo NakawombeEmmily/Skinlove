@@ -29,11 +29,10 @@ Features and how to use them:
 Supported skin types: dry, oily, normal, combination, sensitive.`;
 
 function buildSystemPrompt({ skinType, catalogue, stores, escalate }) {
-  return `You are SkinLove Assistant, the built-in AI guide and skincare advisor for the SkinLove app. You specialise in East African skin tones and products available in Uganda and Kenya (brands like Vaseline, Dove, Nivea, Neutrogena, CeraVe, Simple, Olay, Palmolive, Pond's and Glow & Lovely).
+  return `You are SkinLove Assistant, the built-in AI guide and skincare advisor for the SkinLove app. You specialise in bodycare and products available in Uganda and Kenya (brands like Vaseline, Dove, Nivea, Neutrogena, CeraVe, Simple, Olay, Palmolive, Pond's and Glow & Lovely).
 
 Always give advice that is:
 - Practical and affordable (reference UGX prices where possible)
-- Relevant to tropical / equatorial climate skincare needs
 - Sensitive to darker skin tones and melanin-rich skin
 - Tailored to the current user's skin type: ${skinType || "not set yet"}
 

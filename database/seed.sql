@@ -16,7 +16,7 @@ ON CONFLICT (email) DO NOTHING;
 INSERT INTO products (name, brand, type, description, price, rating, skin_types) VALUES
   ('Vaseline Petroleum Jelly', 'Vaseline', 'Moisturizer', 'Seals in moisture overnight — a Uganda household staple for dry patches and elbows.', 'UGX 18,000', 4.6, ARRAY['dry','normal']),
   ('Beauty Bar', 'Dove', 'Cleanser', 'Gently cleanses without stripping — sulphate-free and kind to sensitive skin.', 'UGX 12,500', 4.7, ARRAY['dry','normal','sensitive']),
-  ('Nivea Creme', 'Nivea', 'Moisturizer', 'Rich all-purpose cream for hands, face and body in hot, dry weather.', 'UGX 27,000', 4.5, ARRAY['dry','normal']),
+  ('Nivea Creme', 'Nivea', 'Moisturizer', 'Rich all-purpose cream for hands, face and body.', 'UGX 27,000', 4.5, ARRAY['dry','normal']),
   ('Oil-Free Acne Wash', 'Neutrogena', 'Cleanser', '2% salicylic acid gel wash that clears breakouts without over-drying oily skin.', 'UGX 45,000', 4.4, ARRAY['oily']),
   ('Hydrating Facial Cleanser', 'CeraVe', 'Cleanser', 'Ceramide-rich cream cleanser that protects the moisture barrier.', 'UGX 52,000', 4.8, ARRAY['dry','sensitive']),
   ('Kind to Skin Face Wash', 'Simple', 'Cleanser', 'No perfume, no parfum — a gentle foaming wash for reactive, sensitive skin.', 'UGX 32,000', 4.5, ARRAY['sensitive','combination']),
@@ -24,9 +24,9 @@ INSERT INTO products (name, brand, type, description, price, rating, skin_types)
   ('Naturals Shower Milk', 'Palmolive', 'Body Care', 'Creamy body wash with natural extracts — leaves skin soft, never tight.', 'UGX 15,000', 4.2, ARRAY['normal','dry']),
   ('Flawless Radiance Derma+ Cleanser', 'Pond''s', 'Cleanser', 'Brightening foaming cleanser that targets dullness and uneven tone.', 'UGX 24,000', 4.4, ARRAY['normal','combination']),
   ('Advanced Multivitamin Cream', 'Glow & Lovely', 'Moisturizer', 'Affordable daily glow cream with multivitamins — popular across East Africa.', 'UGX 9,500', 4.1, ARRAY['normal','oily']),
-  ('Sun Protect & Moisture SPF 50', 'Nivea', 'Sunscreen', 'Light, non-greasy daily SPF — essential for equatorial UV protection.', 'UGX 48,000', 4.7, ARRAY['oily','dry','normal','combination','sensitive']),
+  ('Sun Protect & Moisture SPF 50', 'Nivea', 'Sunscreen', 'Light, non-greasy daily SPF — essential for everyday UV protection.', 'UGX 48,000', 4.7, ARRAY['oily','dry','normal','combination','sensitive']),
   ('Gluta-Hya Radiant Glow Serum Lotion', 'Vaseline', 'Body Care', 'Body lotion with glutahyaluronic complex for smooth, luminous skin.', 'UGX 33,000', 4.5, ARRAY['dry','normal']),
-  ('Hydro Boost Water Gel', 'Neutrogena', 'Moisturizer', 'Oil-free gel hydration that keeps oily skin comfortable in humid weather.', 'UGX 78,000', 4.8, ARRAY['oily','combination']),
+  ('Hydro Boost Water Gel', 'Neutrogena', 'Moisturizer', 'Oil-free gel hydration that keeps oily skin comfortable all day.', 'UGX 78,000', 4.8, ARRAY['oily','combination']),
   ('SA Smoothing Cleanser', 'CeraVe', 'Treatment', 'Salicylic acid + ceramides for rough, bumpy skin and clogged pores.', 'UGX 55,000', 4.6, ARRAY['oily','combination']);
 
 -- ---------- STORES (Kampala) ----------

@@ -223,9 +223,9 @@ function Landing({ onSignUp, onLogIn, onExplore }) {
       <header className="skinlove-hero">
         <div className="hero-copy">
           <p className="eyebrow">SkinLove Rituals</p>
-          <h1>Skincare that knows your skin, your climate and your budget.</h1>
+          <h1>Skincare that knows your skin and your budget.</h1>
           <p className="hero-text">
-            Personal product picks for East African skin, daily routines, and local stores near you — powered by an AI
+            Personal product picks for bodycare, daily routines, and local stores near you — powered by an AI
             skincare assistant.
           </p>
           <div className="hero-actions">
@@ -248,10 +248,6 @@ function Landing({ onSignUp, onLogIn, onExplore }) {
               alt="Glass bottle of oil and flowers"
             />
             <div className="hero-image-label">Botanical oil collection</div>
-          </div>
-          <div className="hero-tile">
-            <strong>Built for Kampala weather</strong>
-            <p>Humidity, dust and strong equatorial sun — advice that works in real life.</p>
           </div>
         </div>
       </header>
@@ -427,7 +423,7 @@ function Dashboard({ user, setView }) {
     { title: "Step 1 — Cleanse", text: "Wash with a gentle cleanser suited to your skin type, morning and night." },
     { title: "Step 2 — Treat", text: "Add a serum or spot treatment for your main concern: tone, spots or dryness." },
     { title: "Step 3 — Moisturise", text: "Lock in hydration with a light gel or rich cream depending on your skin." },
-    { title: "Step 4 — SPF", text: "Finish with sunscreen. Equatorial UV is strong all year round." },
+    { title: "Step 4 — SPF", text: "Finish with sunscreen as the last step of your routine." },
   ];
 
   return (
@@ -800,14 +796,14 @@ function ChatPage({ user, run, showToast }) {
       <div className="section-header">
         <p className="eyebrow">AI assistant</p>
         <h2>Ask the SkinLove Assistant.</h2>
-        <p className="hero-text">Skincare advice for East African skin, in under 100 words.</p>
+        <p className="hero-text">Skincare advice for bodycare, in under 100 words.</p>
       </div>
 
       <div className="chat-window">
         <div className="chat-messages">
           {messages.length === 0 && (
             <div className="chat-empty">
-              <p>Try: “I have oily skin and break out in humid weather — what should I use?”</p>
+              <p>Try: “I have oily skin and break out often — what should I use?”</p>
               <p>Or: “What can I buy for under UGX 20,000 in Kampala?”</p>
             </div>
           )}
