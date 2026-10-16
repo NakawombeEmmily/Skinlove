@@ -12,7 +12,7 @@ A skincare recommendation web app built for East Africa — product discovery, s
 - **Wishlist** — save products to your personal list
 - **Ratings & comments** — logged-in users leave a 1–5 star rating and a comment on any product; product cards show the live average from reviews, and admins can moderate reviews
 - **AI Chat** — built-in app guide + skincare assistant powered by Google Gemini (streamed replies). It knows the SkinLove app, its live product catalogue and Kampala stores.
-- **Find Stores** — locate nearby stores, sorted by real GPS distance (Haversine)
+- **Find Stores** — a live map (Leaflet + OpenStreetMap) shows your exact location with an accuracy circle and every store as a pin; stores re-sort by real GPS distance (Haversine) as you move, with one-tap directions
 - **Admin dashboard** — tabbed panel to manage products (including image uploads), stores, users, wishlist activity, product reviews and analytics
 - **Support escalation** — if a user asks the AI to speak to a human, an alert is raised for admins, who can reply directly into the user's chat from the Support tab
 - **Realtime activity feed** — admins receive live events (logins, sign-ups, support requests, wishlist saves, reviews, product/store changes) over Server-Sent Events
@@ -26,7 +26,7 @@ A skincare recommendation web app built for East Africa — product discovery, s
 | Database | PostgreSQL (Neon) |
 | Auth | JWT + bcrypt |
 | AI | Google Gemini (streamed, app-aware) |
-| Maps/Distance | Browser Geolocation + Haversine |
+| Maps/Distance | Browser Geolocation (`watchPosition`) + Leaflet / OpenStreetMap + Haversine |
 
 ## Architecture
 

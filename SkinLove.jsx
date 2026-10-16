@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import "./SkinLove.css";
 
 const API_BASE =
@@ -760,10 +762,100 @@ function ProductsPage({ user, run, showToast, onRequireLogin, onUserUpdated }) {
   );
 }
 
+function StoreMap({ coords, stores }) {
+  const containerRef = useRef(null);
+  const mapRef = useRef(null);
+  const layerRef = useRef(null);
+
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return undefined;
+    const map = L.map(containerRef.current, {
+      zoomControl: true,
+      attributionControl: true,
+      scrollWheelZoom: true,
+    });
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+    map.setView([0.3476, 32.5825], 12);
+    layerRef.current = L.layerGroup().addTo(map);
+    mapRef.current = map;
+
+    const invalidate = () => map.invalidateSize();
+    requestAnimationFrame(invalidate);
+    window.addEventListener("resize", invalidate);
+
+    return () => {
+      window.removeEventListener("resize", invalidate);
+      map.remove();
+      mapRef.current = null;
+      layerRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const layer = layerRef.current;
+    if (!map || !layer) return;
+
+    layer.clearLayers();
+    const bounds = [];
+
+    (stores || []).forEach((s) => {
+      if (s.latitude == null || s.longitude == null) return;
+      const ll = [Number(s.latitude), Number(s.longitude)];
+      const near = s.distance_km != null ? `<br/>${Number(s.distance_km).toFixed(1)} km away` : "";
+      L.circleMarker(ll, {
+        radius: 7,
+        color: "#d66e3b",
+        fillColor: "#d66e3b",
+        fillOpacity: 0.9,
+        weight: 2,
+      })
+        .bindPopup(`<strong>${s.name}</strong>${near}`)
+        .addTo(layer);
+      bounds.push(ll);
+    });
+
+    if (coords) {
+      const you = [coords.latitude, coords.longitude];
+      if (coords.accuracy) {
+        L.circle(you, {
+          radius: coords.accuracy,
+          color: "#3f7fb2",
+          fillColor: "#3f7fb2",
+          fillOpacity: 0.12,
+          weight: 1,
+        }).addTo(layer);
+      }
+      L.circleMarker(you, {
+        radius: 8,
+        color: "#ffffff",
+        fillColor: "#3f7fb2",
+        fillOpacity: 1,
+        weight: 3,
+      })
+        .bindPopup("You are here")
+        .addTo(layer);
+      bounds.push(you);
+    }
+
+    if (bounds.length === 1) {
+      map.setView(bounds[0], coords ? 15 : 13);
+    } else if (bounds.length > 1) {
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+    }
+  }, [coords, stores]);
+
+  return <div className="store-map" ref={containerRef} />;
+}
+
 function StoresPage({ run, showToast }) {
   const [stores, setStores] = useState([]);
   const [coords, setCoords] = useState(null);
-  const [locating, setLocating] = useState(false);
+  const [tracking, setTracking] = useState(false);
+  const watchRef = useRef(null);
 
   const loadAll = useCallback(async () => {
     const data = await run(() => api("/api/stores", { auth: false }));
@@ -774,53 +866,81 @@ function StoresPage({ run, showToast }) {
     loadAll();
   }, [loadAll]);
 
-  const findNearby = () => {
+  const stopTracking = useCallback(() => {
+    if (watchRef.current != null) {
+      navigator.geolocation.clearWatch(watchRef.current);
+      watchRef.current = null;
+    }
+    setTracking(false);
+  }, []);
+
+  useEffect(() => () => stopTracking(), [stopTracking]);
+
+  const onPosition = useCallback((position) => {
+    const { latitude, longitude, accuracy } = position.coords;
+    setCoords({ latitude, longitude, accuracy });
+  }, []);
+
+  const startTracking = useCallback(() => {
     if (!navigator.geolocation) {
       showToast("Geolocation is not supported by your browser");
       return;
     }
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        setCoords({ latitude, longitude });
-        const data = await run(() => api(`/api/stores/nearby?lat=${latitude}&lng=${longitude}`, { auth: false }));
-        if (data) {
-          setStores(data);
-          showToast(`Found ${data.length} stores sorted by distance`, "success");
-        }
-        setLocating(false);
+    setTracking(true);
+    watchRef.current = navigator.geolocation.watchPosition(
+      onPosition,
+      (err) => {
+        stopTracking();
+        if (err && err.code === 1) showToast("Location permission denied — showing all stores");
+        else showToast("Could not get your location — showing all stores");
       },
-      () => {
-        setLocating(false);
-        showToast("Location access denied — showing all Kampala stores");
-        loadAll();
-      },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
     );
-  };
+  }, [onPosition, showToast, stopTracking]);
+
+  useEffect(() => {
+    if (!coords) return undefined;
+    const { latitude, longitude } = coords;
+    const timer = setTimeout(() => {
+      api(`/api/stores/nearby?lat=${latitude}&lng=${longitude}`, { auth: false })
+        .then((data) => {
+          if (data) setStores(data);
+        })
+        .catch(() => {});
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [coords]);
 
   return (
     <section className="page-section">
       <div className="section-header">
         <p className="eyebrow">Stores</p>
         <h2>Stores near you in Kampala.</h2>
-        <p className="hero-text">Share your location to sort shops by real distance using GPS.</p>
+        <p className="hero-text">Turn on your GPS to see your exact location and shops sorted by real distance.</p>
       </div>
 
       <div className="filter-bar">
-        <button className="btn btn-primary btn-small" onClick={findNearby} disabled={locating}>
-          {locating ? "Finding you…" : "Use my GPS"}
-        </button>
+        {tracking ? (
+          <button className="btn btn-secondary btn-small" onClick={stopTracking}>
+            Stop live location
+          </button>
+        ) : (
+          <button className="btn btn-primary btn-small" onClick={startTracking}>
+            Use my GPS
+          </button>
+        )}
         {coords && (
           <span className="coords-chip">
             {coords.latitude.toFixed(4)}, {coords.longitude.toFixed(4)}
+            {coords.accuracy ? ` (±${Math.round(coords.accuracy)} m)` : ""}
           </span>
         )}
         <button className="btn btn-secondary btn-small" onClick={loadAll}>
           Show all stores
         </button>
       </div>
+
+      <StoreMap coords={coords} stores={stores} />
 
       <div className="store-grid">
         {stores.map((s) => (
@@ -835,6 +955,16 @@ function StoresPage({ run, showToast }) {
                 </span>
               ))}
             </div>
+            {s.latitude != null && s.longitude != null && (
+              <a
+                className="store-directions"
+                href={`https://www.google.com/maps/dir/?api=1&destination=${s.latitude},${s.longitude}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Get directions
+              </a>
+            )}
           </article>
         ))}
         {stores.length === 0 && <p className="empty-state">No stores found yet.</p>}
