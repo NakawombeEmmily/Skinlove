@@ -10,6 +10,7 @@ import storeRoutes from "./routes/stores.js";
 import chatRoutes from "./routes/chat.js";
 import userRoutes from "./routes/users.js";
 import adminRoutes from "./routes/admin.js";
+import reviewRoutes from "./routes/reviews.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -47,6 +48,7 @@ app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/stores", storeRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/reviews", reviewRoutes);
 app.use("/api/admin", adminRoutes);
 
 app.use((req, res) => {

@@ -468,12 +468,155 @@ function Dashboard({ user, setView }) {
   );
 }
 
+function ProductReviewsModal({ product, user, run, showToast, onClose, onSaved }) {
+  const [reviews, setReviews] = useState([]);
+  const [summary, setSummary] = useState({ average: 0, count: 0 });
+  const [loading, setLoading] = useState(true);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const mine = user ? reviews.find((r) => r.user_id === user.id) : null;
+
+  const load = useCallback(async () => {
+    const data = await run(() => api(`/api/reviews/product/${product.id}`, { auth: false }));
+    if (data) {
+      setReviews(data.reviews || []);
+      setSummary(data.summary || { average: 0, count: 0 });
+    }
+    setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    if (mine) {
+      setRating(mine.rating);
+      setComment(mine.comment || "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mine?.id, mine?.updated_at]);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!user) return showToast("Please log in to leave a review");
+    if (!rating) return showToast("Pick a star rating first");
+    setSaving(true);
+    const data = await run(() =>
+      api(`/api/reviews/product/${product.id}`, { method: "POST", body: { rating, comment } })
+    );
+    setSaving(false);
+    if (data) {
+      showToast(mine ? "Review updated" : "Thanks for your review", "success");
+      setReviews((list) => [{ ...data.review, name: user.name }, ...list.filter((r) => r.user_id !== user.id)]);
+      setSummary(data.summary);
+      if (onSaved) onSaved();
+    }
+  };
+
+  const removeMine = async () => {
+    if (!mine) return;
+    const data = await run(() => api(`/api/reviews/${mine.id}`, { method: "DELETE" }));
+    if (data) {
+      showToast("Review removed", "success");
+      setReviews((list) => list.filter((r) => r.id !== mine.id));
+      setSummary(data.summary);
+      setRating(0);
+      setComment("");
+      if (onSaved) onSaved();
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal review-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <div>
+            <p className="eyebrow">Reviews</p>
+            <h3>{product.name}</h3>
+          </div>
+          <button className="modal-close" onClick={onClose} aria-label="Close">
+            &times;
+          </button>
+        </div>
+
+        <div className="review-summary">
+          <Stars rating={summary.count ? summary.average : product.rating} />
+          <span className="muted">
+            {summary.count ? `${summary.count} review${summary.count === 1 ? "" : "s"}` : "No reviews yet"}
+          </span>
+        </div>
+
+        {user ? (
+          <form className="review-form" onSubmit={submit}>
+            <div className="star-picker" role="radiogroup" aria-label="Your rating">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <button
+                  type="button"
+                  key={i}
+                  className={i < rating ? "star-pick active" : "star-pick"}
+                  onClick={() => setRating(i + 1)}
+                  aria-label={`${i + 1} star${i ? "s" : ""}`}
+                >
+                  <StarIcon filled={i < rating} />
+                </button>
+              ))}
+            </div>
+            <textarea
+              className="review-input"
+              placeholder="Share what you liked or did not…"
+              value={comment}
+              maxLength={1000}
+              onChange={(e) => setComment(e.target.value)}
+            />
+            <div className="review-form-actions">
+              <button className="btn btn-primary btn-small" type="submit" disabled={saving}>
+                {saving ? "Saving…" : mine ? "Update review" : "Post review"}
+              </button>
+              {mine && (
+                <button className="link-btn" type="button" onClick={removeMine}>
+                  Delete my review
+                </button>
+              )}
+            </div>
+          </form>
+        ) : (
+          <p className="empty-state">Log in to rate and comment on this product.</p>
+        )}
+
+        {loading ? (
+          <p className="muted">Loading reviews…</p>
+        ) : reviews.length === 0 ? (
+          <p className="empty-state">Be the first to review {product.name}.</p>
+        ) : (
+          <ul className="review-list">
+            {reviews.map((r) => (
+              <li key={r.id} className="review-item">
+                <div className="review-item-head">
+                  <span className="review-author">{r.user_id === user?.id ? "You" : r.name || "Customer"}</span>
+                  <Stars rating={r.rating} />
+                  <span className="review-date">{new Date(r.created_at).toLocaleDateString()}</span>
+                </div>
+                {r.comment && <p className="review-comment">{r.comment}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ProductsPage({ user, run, showToast, onRequireLogin, onUserUpdated }) {
   const [products, setProducts] = useState([]);
   const [wishlistIds, setWishlistIds] = useState([]);
   const [skinType, setSkinType] = useState(user?.skin_type || "");
   const [type, setType] = useState("");
   const [search, setSearch] = useState("");
+  const [reviewProduct, setReviewProduct] = useState(null);
 
   useEffect(() => {
     if (search) {
@@ -583,7 +726,12 @@ function ProductsPage({ user, run, showToast, onRequireLogin, onUserUpdated }) {
                 <h3>{p.name}</h3>
                 <p className="product-brand">{p.brand || "Unknown brand"}</p>
                 <p className="product-price">{p.price || "Price TBC"}</p>
-                <Stars rating={p.rating} />
+                <Stars rating={p.review_count ? p.avg_rating : p.rating} />
+                <button className="link-btn reviews-link" onClick={() => setReviewProduct(p)}>
+                  {p.review_count
+                    ? `${p.review_count} review${p.review_count === 1 ? "" : "s"}`
+                    : "Be the first to review"}
+                </button>
                 <p className="product-desc">{p.description}</p>
                 <div className="tag-row">
                   {(p.skin_types || []).map((s) => (
@@ -596,6 +744,17 @@ function ProductsPage({ user, run, showToast, onRequireLogin, onUserUpdated }) {
             );
           })}
         </div>
+      )}
+
+      {reviewProduct && (
+        <ProductReviewsModal
+          product={reviewProduct}
+          user={user}
+          run={run}
+          showToast={showToast}
+          onClose={() => setReviewProduct(null)}
+          onSaved={load}
+        />
       )}
     </section>
   );
@@ -931,6 +1090,7 @@ function AdminPage({ run, showToast }) {
   const [logins, setLogins] = useState([]);
   const [wishlist, setWishlist] = useState({ items: [], top: [] });
   const [stores, setStores] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [events, setEvents] = useState([]);
   const [live, setLive] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -951,7 +1111,7 @@ function AdminPage({ run, showToast }) {
   const [storeEdit, setStoreEdit] = useState({ name: "", hours: "", available_products: "" });
 
   const loadAll = useCallback(async () => {
-    const [a, u, p, s, l, w, st] = await Promise.all([
+    const [a, u, p, s, l, w, st, rv] = await Promise.all([
       run(() => api("/api/admin/analytics")),
       run(() => api("/api/admin/users")),
       run(() => api("/api/products")),
@@ -959,6 +1119,7 @@ function AdminPage({ run, showToast }) {
       run(() => api("/api/admin/logins")),
       run(() => api("/api/admin/wishlist")),
       run(() => api("/api/admin/stores")),
+      run(() => api("/api/admin/reviews")),
     ]);
     if (a) setAnalytics(a);
     if (u) setUsers(u);
@@ -967,6 +1128,7 @@ function AdminPage({ run, showToast }) {
     if (l) setLogins(l);
     if (w) setWishlist(w);
     if (st) setStores(st);
+    if (rv) setReviews(rv);
   }, [run]);
 
   const loadAllRef = useRef(loadAll);
@@ -1215,6 +1377,14 @@ function AdminPage({ run, showToast }) {
     }
   };
 
+  const deleteReview = async (r) => {
+    const data = await run(() => api(`/api/admin/reviews/${r.id}`, { method: "DELETE" }));
+    if (data) {
+      showToast("Review removed", "success");
+      loadAll();
+    }
+  };
+
   const openSupport = support.filter((r) => r.status === "open");
   const totals = analytics?.totals;
 
@@ -1225,6 +1395,7 @@ function AdminPage({ run, showToast }) {
     ["wishlist", "Wishlist"],
     ["products", "Products"],
     ["stores", "Stores"],
+    ["reviews", "Reviews"],
   ];
 
   return (
@@ -1264,6 +1435,10 @@ function AdminPage({ run, showToast }) {
             <div className="stat-card">
               <strong>{totals ? totals.chat_messages : "—"}</strong>
               <span>Chat messages</span>
+            </div>
+            <div className="stat-card">
+              <strong>{totals ? totals.total_reviews : "—"}</strong>
+              <span>Reviews</span>
             </div>
             <div className="stat-card">
               <strong>{totals ? totals.open_support : "—"}</strong>
@@ -1755,6 +1930,52 @@ function AdminPage({ run, showToast }) {
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {tab === "reviews" && (
+        <div className="panel">
+          <h3>Product reviews ({reviews.length})</h3>
+          {reviews.length === 0 ? (
+            <p className="empty-state">No reviews yet.</p>
+          ) : (
+            <div className="table-scroll">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Customer</th>
+                    <th>Rating</th>
+                    <th>Comment</th>
+                    <th>Date</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reviews.map((r) => (
+                    <tr key={r.id}>
+                      <td>{r.product_name}</td>
+                      <td>
+                        {r.user_name}
+                        <br />
+                        <small>{r.user_email}</small>
+                      </td>
+                      <td>
+                        <Stars rating={r.rating} />
+                      </td>
+                      <td>{r.comment || "—"}</td>
+                      <td>{new Date(r.created_at).toLocaleDateString()}</td>
+                      <td>
+                        <button className="link-btn danger" onClick={() => deleteReview(r)}>
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </section>

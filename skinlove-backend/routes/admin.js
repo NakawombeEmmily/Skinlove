@@ -218,6 +218,7 @@ router.get("/analytics", async (req, res, next) => {
            (SELECT COUNT(*) FROM products WHERE is_active = true)::int AS total_products,
            (SELECT COUNT(*) FROM orders)::int AS total_orders,
            (SELECT COUNT(*) FROM chat_history)::int AS chat_messages,
+           (SELECT COUNT(*) FROM reviews)::int AS total_reviews,
            (SELECT COUNT(*) FROM support_requests WHERE status = 'open')::int AS open_support`
       ),
     ]);
@@ -363,6 +364,42 @@ router.put("/products/:id", async (req, res, next) => {
     if (result.rows.length === 0) return res.status(404).json({ error: "Product not found" });
     publish("product", { title: "Product updated", detail: `${req.user.name} updated product ${result.rows[0].name}` });
     res.json(result.rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/reviews — all product reviews with product and user details
+router.get("/reviews", async (req, res, next) => {
+  try {
+    const result = await query(
+      `SELECT r.id, r.product_id, r.user_id, r.rating, r.comment, r.created_at, r.updated_at,
+              p.name AS product_name, p.brand AS product_brand,
+              u.name AS user_name, u.email AS user_email
+         FROM reviews r
+         JOIN products p ON p.id = r.product_id
+         JOIN users u ON u.id = r.user_id
+        ORDER BY r.created_at DESC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/admin/reviews/:id — remove any review
+router.delete("/reviews/:id", async (req, res, next) => {
+  try {
+    const result = await query("DELETE FROM reviews WHERE id = $1 RETURNING id, user_id", [req.params.id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Review not found" });
+    }
+    publish("review", {
+      title: "Review removed",
+      detail: `${req.user.name} removed a product review`,
+      user_id: result.rows[0].user_id,
+    });
+    res.json({ message: "Review removed" });
   } catch (err) {
     next(err);
   }

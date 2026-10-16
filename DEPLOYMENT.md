@@ -38,7 +38,7 @@ database credentials hidden from users.
     ├── .env.example
     ├── realtime.js
     ├── db/client.js
-    ├── routes/{auth,products,wishlist,stores,chat,users,admin}.js
+    ├── routes/{auth,products,wishlist,stores,chat,users,reviews,admin}.js
     └── middleware/{authMiddleware,adminMiddleware}.js
 ```
 
@@ -55,6 +55,11 @@ database credentials hidden from users.
 | POST/PUT/DELETE | /api/products(/:id) | admin | create / update / soft delete |
 | GET | /api/wishlist | user | wishlist with product details |
 | POST/DELETE | /api/wishlist/:productId | user | add / remove |
+| GET | /api/reviews/product/:productId | – | reviews + rating summary (average, count) |
+| POST | /api/reviews/product/:productId | user | create or update your review (rating 1–5, comment) |
+| DELETE | /api/reviews/:id | user | delete your own review |
+| GET | /api/admin/reviews | admin | all reviews with product + reviewer |
+| DELETE | /api/admin/reviews/:id | admin | remove any review |
 | GET | /api/stores | – | all stores |
 | GET | /api/stores/nearby?lat=&lng= | – | Haversine distance sort |
 | POST | /api/chat | user | Google Gemini, streamed; alerts admin if user asks for a human |

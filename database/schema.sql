@@ -48,6 +48,18 @@ CREATE TABLE stores (
   available_products TEXT[]
 );
 
+-- Customer ratings and comments on products (one review per user per product)
+CREATE TABLE reviews (
+  id SERIAL PRIMARY KEY,
+  product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  comment TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(product_id, user_id)
+);
+
 CREATE TABLE chat_history (
   id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -90,5 +102,6 @@ CREATE INDEX idx_products_skin_types ON products USING GIN (skin_types);
 CREATE INDEX idx_chat_history_user ON chat_history (user_id, created_at);
 CREATE INDEX idx_orders_user ON orders (user_id);
 CREATE INDEX idx_wishlist_user ON wishlist (user_id);
+CREATE INDEX idx_reviews_product ON reviews (product_id, created_at DESC);
 CREATE INDEX idx_support_requests_status ON support_requests (status, created_at DESC);
 CREATE INDEX idx_login_events_created ON login_events (created_at DESC);
